@@ -32,7 +32,7 @@ def download_from_url(url, job_id):
     cmd = [
         'yt-dlp',
         '--no-playlist',
-        '-f', 'best',
+        
         '--merge-output-format', 'mp4',
       '-o', out_path,
         '--no-warnings',
