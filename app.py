@@ -34,8 +34,9 @@ def download_from_url(url, job_id):
         '--no-playlist',
         '-f', 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best',
         '--merge-output-format', 'mp4',
-        '-o', out_path,
+      '-o', out_path,
         '--no-warnings',
+        '--cookies', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt'),
         url
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
