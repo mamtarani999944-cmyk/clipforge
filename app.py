@@ -35,7 +35,7 @@ def download_from_url(url, job_id):
         '--merge-output-format', 'mp4',
       '-o', out_path,
         '--no-warnings',
-        '--cookies', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt'),
+        '--cookies', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt'), '--extractor-args', 'youtube:player_client=web',
         url
     ]
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
@@ -201,4 +201,5 @@ def download(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
 
