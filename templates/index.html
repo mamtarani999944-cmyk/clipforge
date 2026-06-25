@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ClipForge — Turn Videos into Viral Shorts</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0a0f; --bg2: #111118; --bg3: #1a1a24;
+    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+    --text: #f0f0f8; --muted: #8888aa;
+    --accent: #7c5cfc; --accent2: #a78bfa;
+    --green: #22c55e; --red: #ef4444;
+  }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
+
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,15,0.92); backdrop-filter: blur(12px); z-index: 100; }
+  .logo { font-size: 1.3rem; font-weight: 900; letter-spacing: -0.5px; background: linear-gradient(135deg, #a78bfa, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .nav-badge { background: rgba(124,92,252,0.15); border: 1px solid rgba(124,92,252,0.3); color: var(--accent2); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 999px; }
+
+  .hero { text-align: center; padding: 4rem 2rem 2.5rem; max-width: 720px; margin: 0 auto; }
+  .hero-tag { display: inline-flex; align-items: center; gap: 6px; background: rgba(124,92,252,0.1); border: 1px solid rgba(124,92,252,0.25); color: var(--accent2); font-size: 0.78rem; font-weight: 600; padding: 0.3rem 1rem; border-radius: 999px; margin-bottom: 1.25rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  .hero h1 { font-size: clamp(2rem, 6vw, 3.5rem); font-weight: 900; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 1rem; }
+  .hero h1 span { background: linear-gradient(135deg, #7c5cfc, #c084fc, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { font-size: 1.05rem; color: var(--muted); max-width: 460px; margin: 0 auto 2rem; }
+
+  .platforms { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 3rem; }
+  .platform { display: flex; align-items: center; gap: 6px; background: var(--bg2); border: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; font-weight: 600; padding: 0.4rem 0.9rem; border-radius: 999px; }
+  .platform-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .yt { background: #ff0000; }
+  .tt { background: #69C9D0; }
+  .ig { background: #E1306C; }
+  .fb { background: #1877F2; }
+
+  .main-card { max-width: 760px; margin: 0 auto 4rem; padding: 0 1.5rem; }
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .tab { flex: 1; padding: 1rem; text-align: center; font-size: 0.88rem; font-weight: 600; color: var(--muted); cursor: pointer; border: none; background: none; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 7px; }
+  .tab.active { color: var(--accent2); border-bottom: 2px solid var(--accent); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* URL INPUT */
+  .url-section { padding: 2rem; display: none; }
+  .url-section.active { display: block; }
+  .url-label { font-size: 0.82rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.6rem; display: block; }
+  .url-input-wrap { display: flex; gap: 10px; }
+  .url-input { flex: 1; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; }
+  .url-input:focus { outline: none; border-color: var(--accent); }
+  .url-input::placeholder { color: var(--muted); }
+  .btn-paste { background: var(--bg3); border: 1px solid var(--border2); color: var(--muted); padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .btn-paste:hover { color: var(--text); border-color: var(--text); }
+  .supported { margin-top: 0.75rem; font-size: 0.78rem; color: var(--muted); }
+  .supported span { color: var(--accent2); font-weight: 600; }
+
+  /* UPLOAD ZONE */
+  .upload-section { padding: 2rem; display: none; }
+  .upload-section.active { display: block; }
+  .upload-zone { border: 1.5px dashed var(--border2); border-radius: 14px; padding: 2.5rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .upload-zone.dragover { background: rgba(124,92,252,0.06); border-color: var(--accent); }
+  #fileInput { display: none; }
+  .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+  .upload-zone h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem; }
+  .upload-zone p { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.25rem; }
+  .btn-choose { display: inline-flex; align-items: center; gap: 7px; background: var(--accent); color: white; font-size: 0.9rem; font-weight: 600; padding: 0.65rem 1.5rem; border-radius: 9px; border: none; cursor: pointer; transition: all 0.2s; }
+  .btn-choose:hover { background: #6d4ff0; }
+  .file-types { display: flex; justify-content: center; gap: 7px; margin-top: 1rem; flex-wrap: wrap; }
+  .file-type { background: var(--bg3); border: 1px solid var(--border); color: var(--muted); font-size: 0.7rem; font-weight: 600; padding: 3px 9px; border-radius: 5px; }
+
+  /* SETTINGS */
+  .settings-bar { border-top: 1px solid var(--border); padding: 1.25rem 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .setting-group label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.45rem; }
+  .setting-group select { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 0.6rem 0.85rem; border-radius: 8px; font-size: 0.9rem; font-family: inherit; cursor: pointer; appearance: none; }
+  .setting-group select:focus { outline: none; border-color: var(--accent); }
+  .range-row { display: flex; align-items: center; gap: 10px; }
+  .range-val { min-width: 36px; text-align: right; font-size: 0.9rem; font-weight: 600; color: var(--accent2); }
+  input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+
+  /* GENERATE BAR */
+  .generate-bar { border-top: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .selected-info { font-size: 0.85rem; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .selected-info .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+  .btn-generate { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #7c5cfc, #a855f7); color: white; font-size: 0.95rem; font-weight: 700; padding: 0.75rem 1.75rem; border-radius: 10px; border: none; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .btn-generate:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* FILE SELECTED */
+  .file-selected-bar { display: none; border-top: 1px solid var(--border); padding: 0.85rem 2rem; align-items: center; gap: 10px; background: rgba(124,92,252,0.04); }
+  .file-icon { font-size: 1.4rem; }
+  .file-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
+  .file-size { font-size: 0.78rem; color: var(--muted); }
+  .btn-clear { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; padding: 4px; }
+  .btn-clear:hover { color: var(--red); }
+
+  /* PROGRESS */
+  #progressSection { display: none; border-top: 1px solid var(--border); padding: 2rem; text-align: center; }
+  .progress-label { font-size: 0.95rem; color: var(--muted); margin-bottom: 1rem; }
+  .progress-bar-wrap { background: var(--bg3); border-radius: 999px; height: 5px; overflow: hidden; margin-bottom: 1rem; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, #7c5cfc, #c084fc); border-radius: 999px; width: 0%; transition: width 0.4s; }
+  .progress-steps { display: flex; justify-content: center; gap: 1.25rem; flex-wrap: wrap; }
+  .step { font-size: 0.78rem; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+  .step.active { color: var(--accent2); }
+  .step.done { color: var(--green); }
+  .step-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ERROR */
+  #errorSection { display: none; border-top: 1px solid var(--border); padding: 1.25rem 2rem; background: rgba(239,68,68,0.05); }
+  .error-msg { color: var(--red); font-size: 0.88rem; }
+
+  /* RESULTS */
+  #resultsSection { display: none; padding: 2rem 1.5rem; }
+  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+  .results-header h2 { font-size: 1.15rem; font-weight: 700; }
+  .results-header h2 span { color: var(--accent2); }
+  .btn-reset { background: none; border: 1px solid var(--border2); color: var(--muted); font-size: 0.82rem; font-weight: 600; padding: 0.4rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+  .btn-reset:hover { border-color: var(--text); color: var(--text); }
+  .clips-grid { display: grid; gap: 1rem; }
+  .clip-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; transition: border-color 0.2s; }
+  .clip-card:hover { border-color: var(--border2); }
+  .clip-header { padding: 1rem 1.25rem 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .clip-num { width: 28px; height: 28px; background: rgba(124,92,252,0.15); border: 1px solid rgba(124,92,252,0.3); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; color: var(--accent2); flex-shrink: 0; }
+  .clip-caption { font-size: 0.92rem; font-weight: 600; flex: 1; }
+  .clip-meta { font-size: 0.75rem; color: var(--muted); flex-shrink: 0; }
+  .clip-video-wrap { padding: 0 1.25rem; margin-bottom: 0.75rem; }
+  .clip-video-wrap video { width: 100%; max-height: 300px; border-radius: 10px; background: #000; display: block; object-fit: cover; }
+  .clip-footer { padding: 0.75rem 1.25rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .clip-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .clip-tag { font-size: 0.7rem; font-weight: 600; padding: 3px 8px; border-radius: 5px; background: rgba(124,92,252,0.1); border: 1px solid rgba(124,92,252,0.2); color: var(--accent2); }
+  .btn-download { display: inline-flex; align-items: center; gap: 6px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: var(--green); font-size: 0.85rem; font-weight: 700; padding: 0.5rem 1.1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s; white-space: nowrap; }
+  .btn-download:hover { background: rgba(34,197,94,0.18); }
+
+  /* HOW IT WORKS */
+  .how-section { max-width: 760px; margin: 0 auto 5rem; padding: 0 1.5rem; }
+  .how-section h2 { text-align: center; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 1.75rem; }
+  .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+  .how-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.35rem; }
+  .how-icon { font-size: 1.6rem; margin-bottom: 0.65rem; display: block; }
+  .how-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.35rem; }
+  .how-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+
+  footer { border-top: 1px solid var(--border); text-align: center; padding: 2rem; color: var(--muted); font-size: 0.8rem; }
+
+  @media (max-width: 600px) {
+    .settings-bar { grid-template-columns: 1fr; }
+    .hero { padding: 2.5rem 1.25rem 1.5rem; }
+    nav { padding: 1rem 1.25rem; }
+    .generate-bar { flex-direction: column; align-items: stretch; }
+    .btn-generate { justify-content: center; }
+    .url-input-wrap { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">⚡ ClipForge</div>
+  <div class="nav-badge">AI-Powered Shorts</div>
+</nav>
+
+<section class="hero">
+  <div class="hero-tag">✨ Video to Viral Shorts</div>
+  <h1>Turn Any Video into<br><span>Viral Short Clips</span></h1>
+  <p>Paste a YouTube or TikTok link — or upload your own video. ClipForge cuts, crops to 9:16, and adds captions automatically.</p>
+</section>
+
+<div class="platforms">
+  <div class="platform"><span class="platform-dot yt"></span> YouTube</div>
+  <div class="platform"><span class="platform-dot tt"></span> TikTok</div>
+  <div class="platform"><span class="platform-dot ig"></span> Instagram</div>
+  <div class="platform"><span class="platform-dot fb"></span> Facebook</div>
+  <div class="platform">📁 File Upload</div>
+</div>
+
+<div class="main-card">
+  <div class="card">
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('url')">🔗 Paste Link</button>
+      <button class="tab" onclick="switchTab('upload')" id="uploadTab">📁 Upload File</button>
+    </div>
+
+    <!-- URL SECTION -->
+    <div class="url-section active" id="urlSection">
+      <label class="url-label">Video URL</label>
+      <div class="url-input-wrap">
+        <input class="url-input" id="urlInput" type="text"
+          placeholder="https://www.youtube.com/watch?v=... or TikTok link" />
+        <button class="btn-paste" onclick="pasteFromClipboard()">📋 Paste</button>
+      </div>
+      <div class="supported">Supports: <span>YouTube</span> · <span>TikTok</span> · <span>Instagram Reels</span> · <span>Facebook</span> · <span>Twitter/X</span> · <span>Vimeo</span> and 1000+ more sites</div>
+    </div>
+
+    <!-- UPLOAD SECTION -->
+    <div class="upload-section" id="uploadSection">
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="fileInput" accept=".mp4,.mov,.avi,.mkv,.webm" />
+        <div class="upload-icon">🎬</div>
+        <h2>Drop your video here</h2>
+        <p>MP4, MOV, AVI, MKV, WEBM up to 500MB</p>
+        <button class="btn-choose" onclick="document.getElementById('fileInput').click()">📁 Choose File</button>
+        <div class="file-types">
+          <span class="file-type">MP4</span>
+          <span class="file-type">MOV</span>
+          <span class="file-type">AVI</span>
+          <span class="file-type">MKV</span>
+          <span class="file-type">WEBM</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- File selected indicator -->
+    <div class="file-selected-bar" id="fileSelectedBar">
+      <span class="file-icon">🎥</span>
+      <span class="file-name" id="fileName">video.mp4</span>
+      <span class="file-size" id="fileSize"></span>
+      <button class="btn-clear" onclick="clearFile()" title="Remove">✕</button>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="settings-bar">
+      <div class="setting-group">
+        <label>Number of Clips</label>
+        <select id="numClips">
+          <option value="1">1 clip</option>
+          <option value="2">2 clips</option>
+          <option value="3" selected>3 clips</option>
+          <option value="4">4 clips</option>
+          <option value="5">5 clips</option>
+          <option value="6">6 clips</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Duration — <span id="durVal">30s</span></label>
+        <div class="range-row">
+          <input type="range" id="clipDur" min="15" max="60" step="5" value="30"
+            oninput="document.getElementById('durVal').textContent = this.value + 's'" />
+        </div>
+      </div>
+    </div>
+
+    <!-- GENERATE BAR -->
+    <div class="generate-bar">
+      <div class="selected-info" id="selectedInfo">
+        <span style="color:var(--muted)">Paste a link or upload a video to get started</span>
+      </div>
+      <button class="btn-generate" id="generateBtn" onclick="generateClips()">
+        ⚡ Generate Clips
+      </button>
+    </div>
+
+    <!-- PROGRESS -->
+    <div id="progressSection">
+      <div class="progress-label" id="progressLabel">Starting...</div>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-steps">
+        <div class="step" id="step1"><span class="step-dot"></span> Downloading</div>
+        <div class="step" id="step2"><span class="step-dot"></span> Analyzing</div>
+        <div class="step" id="step3"><span class="step-dot"></span> Cutting clips</div>
+        <div class="step" id="step4"><span class="step-dot"></span> Adding captions</div>
+        <div class="step" id="step5"><span class="step-dot"></span> Done</div>
+      </div>
+    </div>
+
+    <!-- ERROR -->
+    <div id="errorSection">
+      <div class="error-msg">⚠️ <span id="errorText"></span></div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="resultsSection">
+      <div class="results-header">
+        <h2>🎉 <span id="clipCount">3</span> clips ready</h2>
+        <button class="btn-reset" onclick="resetAll()">↩ New Video</button>
+      </div>
+      <div class="clips-grid" id="clipsGrid"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="how-section">
+  <h2>How ClipForge Works</h2>
+  <div class="how-grid">
+    <div class="how-card"><span class="how-icon">🔗</span><h3>Paste or Upload</h3><p>Paste any YouTube/TikTok link or upload a video file from your device.</p></div>
+    <div class="how-card"><span class="how-icon">⬇️</span><h3>Auto Download</h3><p>ClipForge fetches the video automatically — no need to download it yourself.</p></div>
+    <div class="how-card"><span class="how-icon">🔍</span><h3>Scene Detection</h3><p>Finds the most engaging moments using smart scene change analysis.</p></div>
+    <div class="how-card"><span class="how-icon">✂️</span><h3>Crop to 9:16</h3><p>Each clip is cropped to vertical format — perfect for TikTok, Reels, Shorts.</p></div>
+    <div class="how-card"><span class="how-icon">💬</span><h3>Add Captions</h3><p>Viral captions are burned into the video — bold, centered, ready to post.</p></div>
+  </div>
+</div>
+
+<footer>Built with ClipForge · Powered by ffmpeg + yt-dlp · Made for creators</footer>
+
+<script>
+  let selectedFile = null;
+  let activeTab = 'url';
+
+  function switchTab(tab) {
+    activeTab = tab;
+    document.getElementById('urlSection').className = 'url-section' + (tab === 'url' ? ' active' : '');
+    document.getElementById('uploadSection').className = 'upload-section' + (tab === 'upload' ? ' active' : '');
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.className = 'tab' + ((i === 0 && tab === 'url') || (i === 1 && tab === 'upload') ? ' active' : '');
+    });
+    hide('errorSection'); hide('resultsSection'); hide('progressSection');
+  }
+
+  async function pasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      document.getElementById('urlInput').value = text;
+      updateSelectedInfo();
+    } catch(e) {
+      document.getElementById('urlInput').focus();
+    }
+  }
+
+  document.getElementById('urlInput').addEventListener('input', updateSelectedInfo);
+
+  function updateSelectedInfo() {
+    const url = document.getElementById('urlInput').value.trim();
+    const info = document.getElementById('selectedInfo');
+    if (url) {
+      let platform = 'Video URL';
+      if (url.includes('youtube.com') || url.includes('youtu.be')) platform = '▶️ YouTube video';
+      else if (url.includes('tiktok.com')) platform = '🎵 TikTok video';
+      else if (url.includes('instagram.com')) platform = '📸 Instagram video';
+      else if (url.includes('twitter.com') || url.includes('x.com')) platform = '🐦 Twitter/X video';
+      else if (url.includes('facebook.com')) platform = '👍 Facebook video';
+      info.innerHTML = `<span class="dot"></span> ${platform} detected`;
+    } else {
+      info.innerHTML = `<span style="color:var(--muted)">Paste a link or upload a video to get started</span>`;
+    }
+  }
+
+  // File upload
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+  function handleFile(file) {
+    selectedFile = file;
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = (file.size / 1024 / 1024).toFixed(1) + ' MB';
+    document.getElementById('fileSelectedBar').style.display = 'flex';
+    document.getElementById('selectedInfo').innerHTML = `<span class="dot"></span> ${file.name}`;
+    hide('errorSection'); hide('resultsSection'); hide('progressSection');
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    fileInput.value = '';
+    document.getElementById('fileSelectedBar').style.display = 'none';
+    document.getElementById('selectedInfo').innerHTML = `<span style="color:var(--muted)">Paste a link or upload a video to get started</span>`;
+  }
+
+  function hide(id) { document.getElementById(id).style.display = 'none'; }
+  function show(id, d='block') { document.getElementById(id).style.display = d; }
+
+  const stepLabels = ['Downloading video...', 'Analyzing scenes...', 'Cutting clips...', 'Adding captions...', 'Finalizing...'];
+  const stepPcts = [20, 40, 60, 80, 95];
+
+  function setStep(n) {
+    document.getElementById('progressLabel').textContent = stepLabels[n];
+    document.getElementById('progressBar').style.width = stepPcts[n] + '%';
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById('step' + i);
+      el.className = 'step' + (i < n+1 ? ' done' : i === n+1 ? ' active' : '');
+    }
+  }
+
+  async function generateClips() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (activeTab === 'url' && !url) {
+      document.getElementById('errorText').textContent = 'Please paste a video URL first.';
+      show('errorSection'); return;
+    }
+    if (activeTab === 'upload' && !selectedFile) {
+      document.getElementById('errorText').textContent = 'Please choose a video file first.';
+      show('errorSection'); return;
+    }
+
+    const btn = document.getElementById('generateBtn');
+    btn.disabled = true;
+    hide('errorSection'); hide('resultsSection');
+    show('progressSection'); setStep(0);
+
+    const form = new FormData();
+    if (activeTab === 'url') {
+      form.append('video_url', url);
+    } else {
+      form.append('video', selectedFile);
+    }
+    form.append('num_clips', document.getElementById('numClips').value);
+    form.append('clip_duration', document.getElementById('clipDur').value);
+
+    let stepTick = 0;
+    const stepTimer = setInterval(() => { stepTick = Math.min(stepTick + 1, 3); setStep(stepTick); }, 10000);
+
+    try {
+      const res = await fetch('/upload', { method: 'POST', body: form });
+      clearInterval(stepTimer);
+      setStep(4);
+      document.getElementById('progressBar').style.width = '100%';
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || 'Server error');
+      setTimeout(() => { hide('progressSection'); showResults(data.clips); btn.disabled = false; }, 500);
+    } catch(err) {
+      clearInterval(stepTimer);
+      hide('progressSection');
+      document.getElementById('errorText').textContent = err.message || 'Processing failed.';
+      show('errorSection');
+      btn.disabled = false;
+    }
+  }
+
+  function showResults(clips) {
+    document.getElementById('clipCount').textContent = clips.length;
+    const grid = document.getElementById('clipsGrid');
+    grid.innerHTML = '';
+    clips.forEach(clip => {
+      const card = document.createElement('div');
+      card.className = 'clip-card';
+      card.innerHTML = `
+        <div class="clip-header">
+          <div class="clip-num">${clip.id}</div>
+          <div class="clip-caption">${clip.caption}</div>
+          <div class="clip-meta">${clip.duration}s</div>
+        </div>
+        <div class="clip-video-wrap">
+          <video controls preload="metadata" src="${clip.download_url}"></video>
+        </div>
+        <div class="clip-footer">
+          <div class="clip-tags">
+            <span class="clip-tag">9:16</span>
+            <span class="clip-tag">Captioned</span>
+            <span class="clip-tag">From ${clip.start}s</span>
+          </div>
+          <a class="btn-download" href="${clip.download_url}" download>⬇️ Download</a>
+        </div>`;
+      grid.appendChild(card);
+    });
+    show('resultsSection');
+  }
+
+  function resetAll() {
+    selectedFile = null;
+    fileInput.value = '';
+    document.getElementById('urlInput').value = '';
+    document.getElementById('fileSelectedBar').style.display = 'none';
+    document.getElementById('selectedInfo').innerHTML = `<span style="color:var(--muted)">Paste a link or upload a video to get started</span>`;
+    hide('resultsSection'); hide('errorSection'); hide('progressSection');
+    document.getElementById('clipsGrid').innerHTML = '';
+  }
+</script>
+</body>
+</html>

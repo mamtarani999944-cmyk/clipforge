@@ -1,0 +1,14 @@
+[Unit]
+Description=ClipForge - Video to Shorts App
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/clipforge
+Environment="PATH=/root/clipforge/venv/bin"
+ExecStart=/root/clipforge/venv/bin/gunicorn --bind 0.0.0.0:5000 --workers 2 --timeout 300 app:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
