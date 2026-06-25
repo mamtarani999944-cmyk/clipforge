@@ -30,8 +30,7 @@ def download_from_url(url, job_id):
     """Download video from YouTube, TikTok, Instagram, etc using yt-dlp"""
     out_path = os.path.join(UPLOAD_FOLDER, f'{job_id}.mp4')
     cmd = [
-        'yt-dlp', '--cookies', '/app/cookies.txt',
-        '--no-playlist',
+        'yt-dlp', '--no-playlist',
         
         '--merge-output-format', 'mp4',
       '-o', out_path,
@@ -202,3 +201,4 @@ def download(filename):
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
+
