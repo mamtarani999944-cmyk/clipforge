@@ -32,7 +32,7 @@ def download_from_url(url, job_id):
     cmd = [
         'yt-dlp',
         '--no-playlist',
-        '-f', 'bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        '-f', 'best[ext=mp4]/best',
         '--merge-output-format', 'mp4',
       '-o', out_path,
         '--no-warnings',
