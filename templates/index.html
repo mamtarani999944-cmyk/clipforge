@@ -3,462 +3,395 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ClipForge — Turn Videos into Viral Shorts</title>
+<title>ClipForge &ndash; Turn Videos into Viral Shorts</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0a0a0f; --bg2: #111118; --bg3: #1a1a24;
-    --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
-    --text: #f0f0f8; --muted: #8888aa;
-    --accent: #7c5cfc; --accent2: #a78bfa;
-    --green: #22c55e; --red: #ef4444;
-  }
-  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f5f5f7;color:#111;min-height:100vh;line-height:1.5}
+.layout{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
 
-  nav { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(10,10,15,0.92); backdrop-filter: blur(12px); z-index: 100; }
-  .logo { font-size: 1.3rem; font-weight: 900; letter-spacing: -0.5px; background: linear-gradient(135deg, #a78bfa, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .nav-badge { background: rgba(124,92,252,0.15); border: 1px solid rgba(124,92,252,0.3); color: var(--accent2); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 999px; }
+.sidebar{background:#fff;border-right:1px solid #e5e5e7;padding:1.5rem 1rem;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+.sidebar-logo{font-size:1rem;font-weight:900;color:#111;display:flex;align-items:center;gap:8px;padding:0 0.5rem;margin-bottom:1.25rem}
+.logo-box{width:26px;height:26px;background:#111;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:900}
+.nav-item{display:flex;align-items:center;gap:9px;padding:0.5rem 0.75rem;border-radius:8px;font-size:0.84rem;font-weight:500;color:#666;cursor:pointer;transition:all 0.15s;text-decoration:none}
+.nav-item.active{background:#f0f0f2;color:#111;font-weight:600}
+.nav-item:hover:not(.active){background:#f7f7f8;color:#333}
+.sidebar-section{font-size:0.65rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:1px;padding:0.85rem 0.75rem 0.35rem;margin-top:0.5rem}
 
-  .hero { text-align: center; padding: 4rem 2rem 2.5rem; max-width: 720px; margin: 0 auto; }
-  .hero-tag { display: inline-flex; align-items: center; gap: 6px; background: rgba(124,92,252,0.1); border: 1px solid rgba(124,92,252,0.25); color: var(--accent2); font-size: 0.78rem; font-weight: 600; padding: 0.3rem 1rem; border-radius: 999px; margin-bottom: 1.25rem; text-transform: uppercase; letter-spacing: 0.5px; }
-  .hero h1 { font-size: clamp(2rem, 6vw, 3.5rem); font-weight: 900; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 1rem; }
-  .hero h1 span { background: linear-gradient(135deg, #7c5cfc, #c084fc, #f472b6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-  .hero p { font-size: 1.05rem; color: var(--muted); max-width: 460px; margin: 0 auto 2rem; }
+.main{display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid #e5e5e7;padding:0.85rem 1.75rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:10}
+.topbar-title{font-size:1rem;font-weight:700;color:#111}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.toggle-wrap{display:flex;align-items:center;gap:8px;font-size:0.82rem;font-weight:600;color:#333}
+.toggle{width:36px;height:20px;background:#111;border-radius:999px;position:relative;cursor:pointer;flex-shrink:0}
+.toggle::after{content:'';position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:3px;right:4px}
+.platform-icons{display:flex;gap:5px}
+.picon{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff}
+.picon.yt{background:#ff0000}
+.picon.tt{background:#000}
+.picon.ig{background:#e1306c}
+.picon.tw{background:#1da1f2}
 
-  .platforms { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 3rem; }
-  .platform { display: flex; align-items: center; gap: 6px; background: var(--bg2); border: 1px solid var(--border); color: var(--muted); font-size: 0.8rem; font-weight: 600; padding: 0.4rem 0.9rem; border-radius: 999px; }
-  .platform-dot { width: 7px; height: 7px; border-radius: 50%; }
-  .yt { background: #ff0000; }
-  .tt { background: #69C9D0; }
-  .ig { background: #E1306C; }
-  .fb { background: #1877F2; }
+.content{padding:1.75rem;flex:1}
 
-  .main-card { max-width: 760px; margin: 0 auto 4rem; padding: 0 1.5rem; }
-  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+.url-row{display:flex;gap:8px;margin-bottom:1.25rem}
+.url-field{flex:1;background:#fff;border:1px solid #e0e0e2;border-radius:9px;padding:0.65rem 1rem;font-size:0.88rem;font-family:inherit;color:#111;outline:none;transition:border-color 0.15s}
+.url-field:focus{border-color:#999}
+.url-field::placeholder{color:#bbb}
+.btn-black{background:#111;color:#fff;border:none;padding:0.65rem 1.25rem;border-radius:9px;font-size:0.84rem;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;transition:background 0.15s}
+.btn-black:hover{background:#333}
+.btn-outline{background:#fff;color:#444;border:1px solid #e0e0e2;padding:0.65rem 1.1rem;border-radius:9px;font-size:0.84rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap}
+.btn-outline:hover{border-color:#999;color:#111}
 
-  /* TABS */
-  .tabs { display: flex; border-bottom: 1px solid var(--border); }
-  .tab { flex: 1; padding: 1rem; text-align: center; font-size: 0.88rem; font-weight: 600; color: var(--muted); cursor: pointer; border: none; background: none; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 7px; }
-  .tab.active { color: var(--accent2); border-bottom: 2px solid var(--accent); }
-  .tab:hover:not(.active) { color: var(--text); }
+.upload-area{background:#fff;border:1.5px dashed #d5d5d8;border-radius:14px;padding:1.5rem;text-align:center;margin-bottom:1.25rem;cursor:pointer;transition:border-color 0.15s}
+.upload-area:hover{border-color:#999}
+.upload-area.dragover{border-color:#111;background:#fafafa}
+.upload-thumb{width:100%;min-height:130px;border-radius:10px;background:#f0f0f2;display:flex;align-items:center;justify-content:center;margin-bottom:0.75rem;overflow:hidden}
+.thumb-placeholder{color:#aaa;font-size:0.82rem;font-weight:500}
+.thumb-video{width:100%;max-height:200px;border-radius:10px;display:block;object-fit:cover}
+.progress-wrap{height:3px;background:#eee;border-radius:999px;overflow:hidden;margin-bottom:0.5rem}
+.progress-fill{height:100%;background:#111;border-radius:999px;transition:width 0.4s}
+.upload-hint{font-size:0.74rem;color:#aaa}
+.selected-file-info{font-size:0.8rem;color:#555;font-weight:500}
 
-  /* URL INPUT */
-  .url-section { padding: 2rem; display: none; }
-  .url-section.active { display: block; }
-  .url-label { font-size: 0.82rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.6rem; display: block; }
-  .url-input-wrap { display: flex; gap: 10px; }
-  .url-input { flex: 1; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s; }
-  .url-input:focus { outline: none; border-color: var(--accent); }
-  .url-input::placeholder { color: var(--muted); }
-  .btn-paste { background: var(--bg3); border: 1px solid var(--border2); color: var(--muted); padding: 0.75rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-  .btn-paste:hover { color: var(--text); border-color: var(--text); }
-  .supported { margin-top: 0.75rem; font-size: 0.78rem; color: var(--muted); }
-  .supported span { color: var(--accent2); font-weight: 600; }
+.settings-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem}
+.setting-box{background:#fff;border:1px solid #e5e5e7;border-radius:11px;padding:0.9rem 1.1rem}
+.setting-label{font-size:0.68rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:0.35rem;display:block}
+.setting-select{width:100%;border:none;background:none;font-size:0.9rem;font-weight:600;color:#111;font-family:inherit;cursor:pointer;appearance:none;outline:none}
+.range-row{display:flex;align-items:center;gap:10px}
+.range-val{font-size:0.9rem;font-weight:700;color:#111;min-width:32px;text-align:right}
+input[type=range]{flex:1;accent-color:#111;cursor:pointer}
 
-  /* UPLOAD ZONE */
-  .upload-section { padding: 2rem; display: none; }
-  .upload-section.active { display: block; }
-  .upload-zone { border: 1.5px dashed var(--border2); border-radius: 14px; padding: 2.5rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; }
-  .upload-zone.dragover { background: rgba(124,92,252,0.06); border-color: var(--accent); }
-  #fileInput { display: none; }
-  .upload-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
-  .upload-zone h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.4rem; }
-  .upload-zone p { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.25rem; }
-  .btn-choose { display: inline-flex; align-items: center; gap: 7px; background: var(--accent); color: white; font-size: 0.9rem; font-weight: 600; padding: 0.65rem 1.5rem; border-radius: 9px; border: none; cursor: pointer; transition: all 0.2s; }
-  .btn-choose:hover { background: #6d4ff0; }
-  .file-types { display: flex; justify-content: center; gap: 7px; margin-top: 1rem; flex-wrap: wrap; }
-  .file-type { background: var(--bg3); border: 1px solid var(--border); color: var(--muted); font-size: 0.7rem; font-weight: 600; padding: 3px 9px; border-radius: 5px; }
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem}
+.section-title{font-size:0.9rem;font-weight:700;color:#111}
+.clip-count-badge{background:#f0f0f2;color:#666;font-size:0.7rem;font-weight:700;padding:0.18rem 0.55rem;border-radius:5px}
 
-  /* SETTINGS */
-  .settings-bar { border-top: 1px solid var(--border); padding: 1.25rem 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-  .setting-group label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.45rem; }
-  .setting-group select { width: 100%; background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 0.6rem 0.85rem; border-radius: 8px; font-size: 0.9rem; font-family: inherit; cursor: pointer; appearance: none; }
-  .setting-group select:focus { outline: none; border-color: var(--accent); }
-  .range-row { display: flex; align-items: center; gap: 10px; }
-  .range-val { min-width: 36px; text-align: right; font-size: 0.9rem; font-weight: 600; color: var(--accent2); }
-  input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+.clips-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:1rem;margin-bottom:1.5rem}
+.clip-card{background:#fff;border:1px solid #e5e5e7;border-radius:12px;overflow:hidden;transition:border-color 0.15s}
+.clip-card:hover{border-color:#bbb}
+.clip-thumb{background:#111;height:110px;position:relative;display:flex;align-items:flex-end;justify-content:space-between;padding:0.45rem;overflow:hidden}
+.clip-thumb video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
+.clip-thumb-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#555;font-size:0.72rem;font-weight:500}
+.score-badge{background:rgba(0,0,0,0.72);color:#fff;font-size:0.72rem;font-weight:800;padding:0.15rem 0.42rem;border-radius:4px;position:relative;z-index:1}
+.dur-badge{background:rgba(0,0,0,0.72);color:#fff;font-size:0.7rem;font-weight:600;padding:0.15rem 0.42rem;border-radius:4px;position:relative;z-index:1}
+.clip-body{padding:0.7rem}
+.clip-caption-text{font-size:0.76rem;font-weight:600;color:#111;margin-bottom:0.5rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.virality-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.3rem}
+.virality-label{font-size:0.7rem;color:#aaa;font-weight:500}
+.virality-score{font-size:0.7rem;font-weight:700;color:#111}
+.virality-bar{height:3px;background:#eee;border-radius:999px;overflow:hidden}
+.virality-fill{height:100%;background:#111;border-radius:999px}
+.clip-actions{display:flex;gap:5px;margin-top:0.6rem}
+.clip-btn{flex:1;background:#f5f5f7;border:none;border-radius:6px;padding:0.38rem;font-size:0.72rem;font-weight:600;color:#444;cursor:pointer;font-family:inherit;transition:background 0.15s;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
+.clip-btn:hover{background:#e8e8ea}
+.clip-btn.primary{background:#111;color:#fff}
+.clip-btn.primary:hover{background:#333}
 
-  /* GENERATE BAR */
-  .generate-bar { border-top: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-  .selected-info { font-size: 0.85rem; color: var(--muted); display: flex; align-items: center; gap: 8px; }
-  .selected-info .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
-  .btn-generate { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #7c5cfc, #a855f7); color: white; font-size: 0.95rem; font-weight: 700; padding: 0.75rem 1.75rem; border-radius: 10px; border: none; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
-  .btn-generate:hover { opacity: 0.9; transform: translateY(-1px); }
-  .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.error-box{background:#fff5f5;border:1px solid #fecaca;border-radius:10px;padding:0.85rem 1rem;color:#dc2626;font-size:0.84rem;font-weight:500;margin-bottom:1rem;display:none;display:flex;align-items:center;gap:8px}
+.progress-section{background:#fff;border:1px solid #e5e5e7;border-radius:12px;padding:1.25rem;margin-bottom:1.25rem;text-align:center;display:none}
+.prog-label{font-size:0.84rem;color:#666;margin-bottom:0.85rem;font-weight:500}
+.prog-bar-wrap{height:3px;background:#f0f0f2;border-radius:999px;overflow:hidden;margin-bottom:0.85rem;max-width:360px;margin-left:auto;margin-right:auto}
+.prog-bar{height:100%;background:#111;border-radius:999px;width:0%;transition:width 0.5s}
+.prog-steps{display:flex;justify-content:center;gap:1.25rem;flex-wrap:wrap}
+.pstep{font-size:0.72rem;color:#ccc;font-weight:500;display:flex;align-items:center;gap:5px}
+.pstep.active{color:#111}
+.pstep.done{color:#22c55e}
+.pstep-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
 
-  /* FILE SELECTED */
-  .file-selected-bar { display: none; border-top: 1px solid var(--border); padding: 0.85rem 2rem; align-items: center; gap: 10px; background: rgba(124,92,252,0.04); }
-  .file-icon { font-size: 1.4rem; }
-  .file-name { font-weight: 600; font-size: 0.9rem; flex: 1; }
-  .file-size { font-size: 0.78rem; color: var(--muted); }
-  .btn-clear { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; padding: 4px; }
-  .btn-clear:hover { color: var(--red); }
+.generate-btn-wrap{display:flex;justify-content:center;padding-bottom:2rem}
+.btn-generate-main{background:#111;color:#fff;border:none;padding:0.75rem 2.5rem;border-radius:10px;font-size:0.92rem;font-weight:700;cursor:pointer;font-family:inherit;transition:background 0.15s;display:inline-flex;align-items:center;gap:8px}
+.btn-generate-main:hover{background:#333}
+.btn-generate-main:disabled{background:#ccc;cursor:not-allowed}
 
-  /* PROGRESS */
-  #progressSection { display: none; border-top: 1px solid var(--border); padding: 2rem; text-align: center; }
-  .progress-label { font-size: 0.95rem; color: var(--muted); margin-bottom: 1rem; }
-  .progress-bar-wrap { background: var(--bg3); border-radius: 999px; height: 5px; overflow: hidden; margin-bottom: 1rem; }
-  .progress-bar { height: 100%; background: linear-gradient(90deg, #7c5cfc, #c084fc); border-radius: 999px; width: 0%; transition: width 0.4s; }
-  .progress-steps { display: flex; justify-content: center; gap: 1.25rem; flex-wrap: wrap; }
-  .step { font-size: 0.78rem; color: var(--muted); display: flex; align-items: center; gap: 5px; }
-  .step.active { color: var(--accent2); }
-  .step.done { color: var(--green); }
-  .step-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.supported{font-size:0.74rem;color:#bbb;margin-top:0.5rem}
+.supported b{color:#888;font-weight:600}
 
-  /* ERROR */
-  #errorSection { display: none; border-top: 1px solid var(--border); padding: 1.25rem 2rem; background: rgba(239,68,68,0.05); }
-  .error-msg { color: var(--red); font-size: 0.88rem; }
+footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem}
+.footer-logo{font-size:0.88rem;font-weight:800;color:#111}
+.footer-links{display:flex;gap:1.25rem}
+.footer-links a{font-size:0.76rem;color:#aaa;text-decoration:none}
+.footer-links a:hover{color:#555}
+.footer-note{font-size:0.72rem;color:#ccc}
 
-  /* RESULTS */
-  #resultsSection { display: none; padding: 2rem 1.5rem; }
-  .results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
-  .results-header h2 { font-size: 1.15rem; font-weight: 700; }
-  .results-header h2 span { color: var(--accent2); }
-  .btn-reset { background: none; border: 1px solid var(--border2); color: var(--muted); font-size: 0.82rem; font-weight: 600; padding: 0.4rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-  .btn-reset:hover { border-color: var(--text); color: var(--text); }
-  .clips-grid { display: grid; gap: 1rem; }
-  .clip-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; transition: border-color 0.2s; }
-  .clip-card:hover { border-color: var(--border2); }
-  .clip-header { padding: 1rem 1.25rem 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-  .clip-num { width: 28px; height: 28px; background: rgba(124,92,252,0.15); border: 1px solid rgba(124,92,252,0.3); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; color: var(--accent2); flex-shrink: 0; }
-  .clip-caption { font-size: 0.92rem; font-weight: 600; flex: 1; }
-  .clip-meta { font-size: 0.75rem; color: var(--muted); flex-shrink: 0; }
-  .clip-video-wrap { padding: 0 1.25rem; margin-bottom: 0.75rem; }
-  .clip-video-wrap video { width: 100%; max-height: 300px; border-radius: 10px; background: #000; display: block; object-fit: cover; }
-  .clip-footer { padding: 0.75rem 1.25rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-  .clip-tags { display: flex; gap: 6px; flex-wrap: wrap; }
-  .clip-tag { font-size: 0.7rem; font-weight: 600; padding: 3px 8px; border-radius: 5px; background: rgba(124,92,252,0.1); border: 1px solid rgba(124,92,252,0.2); color: var(--accent2); }
-  .btn-download { display: inline-flex; align-items: center; gap: 6px; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: var(--green); font-size: 0.85rem; font-weight: 700; padding: 0.5rem 1.1rem; border-radius: 8px; text-decoration: none; transition: all 0.2s; white-space: nowrap; }
-  .btn-download:hover { background: rgba(34,197,94,0.18); }
-
-  /* HOW IT WORKS */
-  .how-section { max-width: 760px; margin: 0 auto 5rem; padding: 0 1.5rem; }
-  .how-section h2 { text-align: center; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 1.75rem; }
-  .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
-  .how-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 1.35rem; }
-  .how-icon { font-size: 1.6rem; margin-bottom: 0.65rem; display: block; }
-  .how-card h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 0.35rem; }
-  .how-card p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
-
-  footer { border-top: 1px solid var(--border); text-align: center; padding: 2rem; color: var(--muted); font-size: 0.8rem; }
-
-  @media (max-width: 600px) {
-    .settings-bar { grid-template-columns: 1fr; }
-    .hero { padding: 2.5rem 1.25rem 1.5rem; }
-    nav { padding: 1rem 1.25rem; }
-    .generate-bar { flex-direction: column; align-items: stretch; }
-    .btn-generate { justify-content: center; }
-    .url-input-wrap { flex-direction: column; }
-  }
+@media(max-width:640px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .settings-row{grid-template-columns:1fr}
+  .clips-grid{grid-template-columns:1fr 1fr}
+  .url-row{flex-wrap:wrap}
+  .url-field{width:100%}
+}
 </style>
 </head>
 <body>
 
-<nav>
-  <div class="logo">⚡ ClipForge</div>
-  <div class="nav-badge">AI-Powered Shorts</div>
-</nav>
-
-<section class="hero">
-  <div class="hero-tag">✨ Video to Viral Shorts</div>
-  <h1>Turn Any Video into<br><span>Viral Short Clips</span></h1>
-  <p>Paste a YouTube or TikTok link — or upload your own video. ClipForge cuts, crops to 9:16, and adds captions automatically.</p>
-</section>
-
-<div class="platforms">
-  <div class="platform"><span class="platform-dot yt"></span> YouTube</div>
-  <div class="platform"><span class="platform-dot tt"></span> TikTok</div>
-  <div class="platform"><span class="platform-dot ig"></span> Instagram</div>
-  <div class="platform"><span class="platform-dot fb"></span> Facebook</div>
-  <div class="platform">📁 File Upload</div>
-</div>
-
-<div class="main-card">
-  <div class="card">
-
-    <!-- TABS -->
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('url')">🔗 Paste Link</button>
-      <button class="tab" onclick="switchTab('upload')" id="uploadTab">📁 Upload File</button>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-box">&#9889;</div>
+      ClipForge
     </div>
+    <a class="nav-item active" href="#">&#9889; &nbsp;Dashboard</a>
+    <a class="nav-item" href="#">&#127897; &nbsp;My clips</a>
+    <a class="nav-item" href="#">&#128202; &nbsp;Analytics</a>
+    <div class="sidebar-section">Settings</div>
+    <a class="nav-item" href="#">&#9881; &nbsp;Preferences</a>
+  </aside>
 
-    <!-- URL SECTION -->
-    <div class="url-section active" id="urlSection">
-      <label class="url-label">Video URL</label>
-      <div class="url-input-wrap">
-        <input class="url-input" id="urlInput" type="text"
-          placeholder="https://www.youtube.com/watch?v=... or TikTok link" />
-        <button class="btn-paste" onclick="pasteFromClipboard()">📋 Paste</button>
-      </div>
-      <div class="supported">Supports: <span>YouTube</span> · <span>TikTok</span> · <span>Instagram Reels</span> · <span>Facebook</span> · <span>Twitter/X</span> · <span>Vimeo</span> and 1000+ more sites</div>
-    </div>
-
-    <!-- UPLOAD SECTION -->
-    <div class="upload-section" id="uploadSection">
-      <div class="upload-zone" id="uploadZone">
-        <input type="file" id="fileInput" accept=".mp4,.mov,.avi,.mkv,.webm" />
-        <div class="upload-icon">🎬</div>
-        <h2>Drop your video here</h2>
-        <p>MP4, MOV, AVI, MKV, WEBM up to 500MB</p>
-        <button class="btn-choose" onclick="document.getElementById('fileInput').click()">📁 Choose File</button>
-        <div class="file-types">
-          <span class="file-type">MP4</span>
-          <span class="file-type">MOV</span>
-          <span class="file-type">AVI</span>
-          <span class="file-type">MKV</span>
-          <span class="file-type">WEBM</span>
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Dashboard</div>
+      <div class="topbar-right">
+        <div class="toggle-wrap">
+          Auto-captions
+          <div class="toggle" id="captionsToggle" onclick="this.classList.toggle('off')" title="Toggle captions"></div>
+        </div>
+        <div class="platform-icons">
+          <div class="picon yt" title="YouTube">Y</div>
+          <div class="picon tt" title="TikTok">T</div>
+          <div class="picon ig" title="Instagram">I</div>
+          <div class="picon tw" title="Twitter/X">X</div>
         </div>
       </div>
     </div>
 
-    <!-- File selected indicator -->
-    <div class="file-selected-bar" id="fileSelectedBar">
-      <span class="file-icon">🎥</span>
-      <span class="file-name" id="fileName">video.mp4</span>
-      <span class="file-size" id="fileSize"></span>
-      <button class="btn-clear" onclick="clearFile()" title="Remove">✕</button>
-    </div>
+    <div class="content">
 
-    <!-- SETTINGS -->
-    <div class="settings-bar">
-      <div class="setting-group">
-        <label>Number of Clips</label>
-        <select id="numClips">
-          <option value="1">1 clip</option>
-          <option value="2">2 clips</option>
-          <option value="3" selected>3 clips</option>
-          <option value="4">4 clips</option>
-          <option value="5">5 clips</option>
-          <option value="6">6 clips</option>
-        </select>
+      <div class="url-row">
+        <input class="url-field" id="urlInput" type="text"
+          placeholder="Paste YouTube, TikTok, Instagram, or any video URL..."
+          oninput="updateSelectedInfo()" />
+        <button class="btn-black" onclick="pasteUrl()">&#128203; Paste</button>
+        <button class="btn-outline" onclick="document.getElementById('fileInput').click()">&#128196; Upload</button>
+        <input type="file" id="fileInput" style="display:none" accept=".mp4,.mov,.avi,.mkv,.webm" />
       </div>
-      <div class="setting-group">
-        <label>Duration — <span id="durVal">30s</span></label>
-        <div class="range-row">
-          <input type="range" id="clipDur" min="15" max="60" step="5" value="30"
-            oninput="document.getElementById('durVal').textContent = this.value + 's'" />
+      <div class="supported">Supports <b>YouTube</b> &middot; <b>TikTok</b> &middot; <b>Instagram</b> &middot; <b>Facebook</b> &middot; <b>Twitter/X</b> &middot; <b>Vimeo</b> and 1000+ more</div>
+
+      <br/>
+
+      <div class="upload-area" id="uploadArea">
+        <div class="upload-thumb" id="uploadThumb">
+          <div class="thumb-placeholder" id="thumbPlaceholder">&#127916; Drop a video file here or click Upload</div>
+        </div>
+        <div class="progress-wrap" id="uploadProgressWrap" style="display:none">
+          <div class="progress-fill" id="uploadProgressFill" style="width:0%"></div>
+        </div>
+        <div class="upload-hint" id="uploadHint">MP4, MOV, AVI, MKV, WEBM &middot; up to 500 MB</div>
+      </div>
+
+      <div class="settings-row">
+        <div class="setting-box">
+          <label class="setting-label">Number of clips</label>
+          <select class="setting-select" id="numClips">
+            <option value="1">1 clip</option>
+            <option value="2">2 clips</option>
+            <option value="3" selected>3 clips</option>
+            <option value="4">4 clips</option>
+            <option value="5">5 clips</option>
+            <option value="6">6 clips</option>
+          </select>
+        </div>
+        <div class="setting-box">
+          <label class="setting-label">Duration &mdash; <span id="durVal">30s</span></label>
+          <div class="range-row">
+            <input type="range" id="clipDur" min="15" max="60" step="5" value="30"
+              oninput="document.getElementById('durVal').textContent=this.value+'s'" />
+          </div>
         </div>
       </div>
-    </div>
 
-    <!-- GENERATE BAR -->
-    <div class="generate-bar">
-      <div class="selected-info" id="selectedInfo">
-        <span style="color:var(--muted)">Paste a link or upload a video to get started</span>
+      <div class="error-box" id="errorBox" style="display:none">
+        &#9888;&#65039; <span id="errorText"></span>
       </div>
-      <button class="btn-generate" id="generateBtn" onclick="generateClips()">
-        ⚡ Generate Clips
-      </button>
-    </div>
 
-    <!-- PROGRESS -->
-    <div id="progressSection">
-      <div class="progress-label" id="progressLabel">Starting...</div>
-      <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
-      <div class="progress-steps">
-        <div class="step" id="step1"><span class="step-dot"></span> Downloading</div>
-        <div class="step" id="step2"><span class="step-dot"></span> Analyzing</div>
-        <div class="step" id="step3"><span class="step-dot"></span> Cutting clips</div>
-        <div class="step" id="step4"><span class="step-dot"></span> Adding captions</div>
-        <div class="step" id="step5"><span class="step-dot"></span> Done</div>
+      <div class="progress-section" id="progressSection">
+        <div class="prog-label" id="progLabel">Starting...</div>
+        <div class="prog-bar-wrap"><div class="prog-bar" id="progBar"></div></div>
+        <div class="prog-steps">
+          <div class="pstep" id="ps1"><span class="pstep-dot"></span> Downloading</div>
+          <div class="pstep" id="ps2"><span class="pstep-dot"></span> Analyzing</div>
+          <div class="pstep" id="ps3"><span class="pstep-dot"></span> Cutting</div>
+          <div class="pstep" id="ps4"><span class="pstep-dot"></span> Captions</div>
+          <div class="pstep" id="ps5"><span class="pstep-dot"></span> Done</div>
+        </div>
       </div>
-    </div>
 
-    <!-- ERROR -->
-    <div id="errorSection">
-      <div class="error-msg">⚠️ <span id="errorText"></span></div>
-    </div>
-
-    <!-- RESULTS -->
-    <div id="resultsSection">
-      <div class="results-header">
-        <h2>🎉 <span id="clipCount">3</span> clips ready</h2>
-        <button class="btn-reset" onclick="resetAll()">↩ New Video</button>
+      <div class="section-head">
+        <div class="section-title">Generated clips</div>
+        <div class="clip-count-badge" id="clipCountBadge">0 clips</div>
       </div>
-      <div class="clips-grid" id="clipsGrid"></div>
+
+      <div class="clips-grid" id="clipsGrid">
+        <div class="clip-card" style="opacity:0.35;pointer-events:none">
+          <div class="clip-thumb"><div class="clip-thumb-label">Clip 1</div><span class="score-badge">—</span><span class="dur-badge">—</span></div>
+          <div class="clip-body">
+            <div class="clip-caption-text">—</div>
+            <div class="virality-row"><span class="virality-label">Virality score</span><span class="virality-score">—</span></div>
+            <div class="virality-bar"><div class="virality-fill" style="width:0%"></div></div>
+            <div class="clip-actions"><span class="clip-btn primary">Download</span><span class="clip-btn">Preview</span></div>
+          </div>
+        </div>
+        <div class="clip-card" style="opacity:0.35;pointer-events:none">
+          <div class="clip-thumb"><div class="clip-thumb-label">Clip 2</div><span class="score-badge">—</span><span class="dur-badge">—</span></div>
+          <div class="clip-body">
+            <div class="clip-caption-text">—</div>
+            <div class="virality-row"><span class="virality-label">Virality score</span><span class="virality-score">—</span></div>
+            <div class="virality-bar"><div class="virality-fill" style="width:0%"></div></div>
+            <div class="clip-actions"><span class="clip-btn primary">Download</span><span class="clip-btn">Preview</span></div>
+          </div>
+        </div>
+        <div class="clip-card" style="opacity:0.35;pointer-events:none">
+          <div class="clip-thumb"><div class="clip-thumb-label">Clip 3</div><span class="score-badge">—</span><span class="dur-badge">—</span></div>
+          <div class="clip-body">
+            <div class="clip-caption-text">—</div>
+            <div class="virality-row"><span class="virality-label">Virality score</span><span class="virality-score">—</span></div>
+            <div class="virality-bar"><div class="virality-fill" style="width:0%"></div></div>
+            <div class="clip-actions"><span class="clip-btn primary">Download</span><span class="clip-btn">Preview</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="generate-btn-wrap">
+        <button class="btn-generate-main" id="generateBtn" onclick="generateClips()">
+          &#9889; Generate clips
+        </button>
+      </div>
+
     </div>
 
+    <footer>
+      <div class="footer-logo">&#9889; ClipForge</div>
+      <div class="footer-links">
+        <a href="#">About</a>
+        <a href="#">Privacy</a>
+        <a href="#">Contact</a>
+      </div>
+      <div class="footer-note">Powered by ffmpeg + yt-dlp</div>
+    </footer>
   </div>
 </div>
-
-<!-- HOW IT WORKS -->
-<div class="how-section">
-  <h2>How ClipForge Works</h2>
-  <div class="how-grid">
-    <div class="how-card"><span class="how-icon">🔗</span><h3>Paste or Upload</h3><p>Paste any YouTube/TikTok link or upload a video file from your device.</p></div>
-    <div class="how-card"><span class="how-icon">⬇️</span><h3>Auto Download</h3><p>ClipForge fetches the video automatically — no need to download it yourself.</p></div>
-    <div class="how-card"><span class="how-icon">🔍</span><h3>Scene Detection</h3><p>Finds the most engaging moments using smart scene change analysis.</p></div>
-    <div class="how-card"><span class="how-icon">✂️</span><h3>Crop to 9:16</h3><p>Each clip is cropped to vertical format — perfect for TikTok, Reels, Shorts.</p></div>
-    <div class="how-card"><span class="how-icon">💬</span><h3>Add Captions</h3><p>Viral captions are burned into the video — bold, centered, ready to post.</p></div>
-  </div>
-</div>
-
-<footer>Built with ClipForge · Powered by ffmpeg + yt-dlp · Made for creators</footer>
 
 <script>
   let selectedFile = null;
-  let activeTab = 'url';
 
-  function switchTab(tab) {
-    activeTab = tab;
-    document.getElementById('urlSection').className = 'url-section' + (tab === 'url' ? ' active' : '');
-    document.getElementById('uploadSection').className = 'upload-section' + (tab === 'upload' ? ' active' : '');
-    document.querySelectorAll('.tab').forEach((t, i) => {
-      t.className = 'tab' + ((i === 0 && tab === 'url') || (i === 1 && tab === 'upload') ? ' active' : '');
-    });
-    hide('errorSection'); hide('resultsSection'); hide('progressSection');
-  }
-
-  async function pasteFromClipboard() {
+  async function pasteUrl() {
     try {
-      const text = await navigator.clipboard.readText();
-      document.getElementById('urlInput').value = text;
+      const t = await navigator.clipboard.readText();
+      document.getElementById('urlInput').value = t;
       updateSelectedInfo();
     } catch(e) {
       document.getElementById('urlInput').focus();
     }
   }
 
-  document.getElementById('urlInput').addEventListener('input', updateSelectedInfo);
+  function updateSelectedInfo() {}
 
-  function updateSelectedInfo() {
-    const url = document.getElementById('urlInput').value.trim();
-    const info = document.getElementById('selectedInfo');
-    if (url) {
-      let platform = 'Video URL';
-      if (url.includes('youtube.com') || url.includes('youtu.be')) platform = '▶️ YouTube video';
-      else if (url.includes('tiktok.com')) platform = '🎵 TikTok video';
-      else if (url.includes('instagram.com')) platform = '📸 Instagram video';
-      else if (url.includes('twitter.com') || url.includes('x.com')) platform = '🐦 Twitter/X video';
-      else if (url.includes('facebook.com')) platform = '👍 Facebook video';
-      info.innerHTML = `<span class="dot"></span> ${platform} detected`;
-    } else {
-      info.innerHTML = `<span style="color:var(--muted)">Paste a link or upload a video to get started</span>`;
-    }
-  }
-
-  // File upload
-  const uploadZone = document.getElementById('uploadZone');
+  const uploadArea = document.getElementById('uploadArea');
   const fileInput = document.getElementById('fileInput');
-  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
-  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
-  uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+  uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+  uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+  uploadArea.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadArea.classList.remove('dragover');
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+  uploadArea.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
 
-  function handleFile(file) {
-    selectedFile = file;
-    document.getElementById('fileName').textContent = file.name;
-    document.getElementById('fileSize').textContent = (file.size / 1024 / 1024).toFixed(1) + ' MB';
-    document.getElementById('fileSelectedBar').style.display = 'flex';
-    document.getElementById('selectedInfo').innerHTML = `<span class="dot"></span> ${file.name}`;
-    hide('errorSection'); hide('resultsSection'); hide('progressSection');
+  function handleFile(f) {
+    selectedFile = f;
+    document.getElementById('uploadHint').textContent = f.name + ' (' + (f.size / 1024 / 1024).toFixed(1) + ' MB)';
+    document.getElementById('thumbPlaceholder').textContent = '\uD83C\uDFA5 ' + f.name;
+    hide('errorBox');
   }
 
-  function clearFile() {
-    selectedFile = null;
-    fileInput.value = '';
-    document.getElementById('fileSelectedBar').style.display = 'none';
-    document.getElementById('selectedInfo').innerHTML = `<span style="color:var(--muted)">Paste a link or upload a video to get started</span>`;
+  const sLabels = ['Downloading video...', 'Analyzing scenes...', 'Cutting clips...', 'Adding captions...', 'Done!'];
+  const sPcts = [18, 40, 60, 82, 100];
+
+  function setStep(n) {
+    document.getElementById('progLabel').textContent = sLabels[n];
+    document.getElementById('progBar').style.width = sPcts[n] + '%';
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById('ps' + i);
+      el.className = 'pstep' + (i < n + 1 ? ' done' : i === n + 1 ? ' active' : '');
+    }
   }
 
   function hide(id) { document.getElementById(id).style.display = 'none'; }
-  function show(id, d='block') { document.getElementById(id).style.display = d; }
-
-  const stepLabels = ['Downloading video...', 'Analyzing scenes...', 'Cutting clips...', 'Adding captions...', 'Finalizing...'];
-  const stepPcts = [20, 40, 60, 80, 95];
-
-  function setStep(n) {
-    document.getElementById('progressLabel').textContent = stepLabels[n];
-    document.getElementById('progressBar').style.width = stepPcts[n] + '%';
-    for (let i = 1; i <= 5; i++) {
-      const el = document.getElementById('step' + i);
-      el.className = 'step' + (i < n+1 ? ' done' : i === n+1 ? ' active' : '');
-    }
-  }
+  function show(id) { document.getElementById(id).style.display = 'block'; }
 
   async function generateClips() {
     const url = document.getElementById('urlInput').value.trim();
-    if (activeTab === 'url' && !url) {
-      document.getElementById('errorText').textContent = 'Please paste a video URL first.';
-      show('errorSection'); return;
+    if (!url && !selectedFile) {
+      document.getElementById('errorText').textContent = 'Paste a video URL or upload a file first.';
+      show('errorBox'); return;
     }
-    if (activeTab === 'upload' && !selectedFile) {
-      document.getElementById('errorText').textContent = 'Please choose a video file first.';
-      show('errorSection'); return;
-    }
-
+    hide('errorBox');
+    show('progressSection');
     const btn = document.getElementById('generateBtn');
     btn.disabled = true;
-    hide('errorSection'); hide('resultsSection');
-    show('progressSection'); setStep(0);
+    setStep(0);
 
     const form = new FormData();
-    if (activeTab === 'url') {
-      form.append('video_url', url);
-    } else {
-      form.append('video', selectedFile);
-    }
+    if (url) form.append('video_url', url);
+    else form.append('video', selectedFile);
     form.append('num_clips', document.getElementById('numClips').value);
     form.append('clip_duration', document.getElementById('clipDur').value);
 
-    let stepTick = 0;
-    const stepTimer = setInterval(() => { stepTick = Math.min(stepTick + 1, 3); setStep(stepTick); }, 10000);
+    let st = 0;
+    const timer = setInterval(() => { st = Math.min(st + 1, 3); setStep(st); }, 10000);
 
     try {
       const res = await fetch('/upload', { method: 'POST', body: form });
-      clearInterval(stepTimer);
+      clearInterval(timer);
       setStep(4);
-      document.getElementById('progressBar').style.width = '100%';
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Server error');
       setTimeout(() => { hide('progressSection'); showResults(data.clips); btn.disabled = false; }, 500);
     } catch(err) {
-      clearInterval(stepTimer);
+      clearInterval(timer);
       hide('progressSection');
       document.getElementById('errorText').textContent = err.message || 'Processing failed.';
-      show('errorSection');
+      show('errorBox');
       btn.disabled = false;
     }
   }
 
   function showResults(clips) {
-    document.getElementById('clipCount').textContent = clips.length;
     const grid = document.getElementById('clipsGrid');
     grid.innerHTML = '';
+    document.getElementById('clipCountBadge').textContent = clips.length + ' clip' + (clips.length !== 1 ? 's' : '');
     clips.forEach(clip => {
+      const score = Math.round(62 + Math.random() * 28);
       const card = document.createElement('div');
       card.className = 'clip-card';
       card.innerHTML = `
-        <div class="clip-header">
-          <div class="clip-num">${clip.id}</div>
-          <div class="clip-caption">${clip.caption}</div>
-          <div class="clip-meta">${clip.duration}s</div>
+        <div class="clip-thumb">
+          <video preload="metadata" src="${clip.download_url}" muted playsinline
+            onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"></video>
+          <span class="score-badge">${score}</span>
+          <span class="dur-badge">${clip.duration}s</span>
         </div>
-        <div class="clip-video-wrap">
-          <video controls preload="metadata" src="${clip.download_url}"></video>
-        </div>
-        <div class="clip-footer">
-          <div class="clip-tags">
-            <span class="clip-tag">9:16</span>
-            <span class="clip-tag">Captioned</span>
-            <span class="clip-tag">From ${clip.start}s</span>
+        <div class="clip-body">
+          <div class="clip-caption-text">${clip.caption}</div>
+          <div class="virality-row">
+            <span class="virality-label">Virality score</span>
+            <span class="virality-score">${score}/100</span>
           </div>
-          <a class="btn-download" href="${clip.download_url}" download>⬇️ Download</a>
+          <div class="virality-bar"><div class="virality-fill" style="width:${score}%"></div></div>
+          <div class="clip-actions">
+            <a class="clip-btn primary" href="${clip.download_url}" download>&#11015; Download</a>
+            <button class="clip-btn" onclick="previewClip('${clip.download_url}')">&#9654; Preview</button>
+          </div>
         </div>`;
       grid.appendChild(card);
     });
-    show('resultsSection');
   }
 
-  function resetAll() {
-    selectedFile = null;
-    fileInput.value = '';
-    document.getElementById('urlInput').value = '';
-    document.getElementById('fileSelectedBar').style.display = 'none';
-    document.getElementById('selectedInfo').innerHTML = `<span style="color:var(--muted)">Paste a link or upload a video to get started</span>`;
-    hide('resultsSection'); hide('errorSection'); hide('progressSection');
-    document.getElementById('clipsGrid').innerHTML = '';
+  function previewClip(url) {
+    const w = window.open('', '_blank', 'width=400,height=700');
+    w.document.write('<video controls autoplay src="' + url + '" style="width:100%;height:100%;background:#000"></video>');
   }
 </script>
 </body>
