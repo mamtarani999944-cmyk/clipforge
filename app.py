@@ -64,8 +64,85 @@ def detect_scenes(video_path, threshold=0.35):
                 timestamps.append(float(match.group(1)))
     return timestamps
 
+def generate_ass_captions(caption, duration, ass_path):
+    """Build an ASS subtitle file that reveals one word at a time, TikTok-style."""
+    words = caption.split()
+    if not words:
+        words = [""]
+    per_word = duration / len(words)
+
+    def ts(t):
+        h = int(t // 3600)
+        m = int((t % 3600) // 60)
+        s = t % 60
+        return f"{h:01d}:{m:02d}:{s:05.2f}"
+
+    header = """[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Word,Arial Black,90,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,1,0,0,0,100,100,0,0,1,6,0,2,60,60,260,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    lines = [header]
+    t = 0.0
+    for w in words:
+        start = ts(t)
+        end = ts(t + per_word)
+        text = (
+            r"{\fscx80\fscy80\t(0,80,\fscx105\fscy105)\t(80,150,\fscx100\fscy100)}"
+            + w
+        )
+        lines.append(f"Dialogue: 0,{start},{end},Word,,0,0,0,,{text}\n")
+        t += per_word
+
+    with open(ass_path, 'w', encoding='utf-8') as f:
+        f.writelines(lines)
+
+
 def extract_clip(video_path, start, duration, output_path, caption=""):
-   def generate_clips(video_path, num_clips=3, clip_duration=30):
+    target_w, target_h = 1080, 1920
+    ass_path = None
+
+    if caption:
+        ass_path = output_path.replace('.mp4', '.ass')
+        generate_ass_captions(caption, duration, ass_path)
+        escaped_ass = ass_path.replace('\\', '/').replace(':', '\\:')
+        vf = (
+            f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,"
+            f"crop={target_w}:{target_h},"
+            f"ass='{escaped_ass}'"
+        )
+    else:
+        vf = (
+            f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,"
+            f"crop={target_w}:{target_h}"
+        )
+
+    cmd = [
+        'ffmpeg', '-y',
+        '-ss', str(start),
+        '-i', video_path,
+        '-t', str(duration),
+        '-vf', vf,
+        '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
+        '-c:a', 'aac', '-b:a', '128k',
+        '-movflags', '+faststart',
+        output_path
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    if ass_path and os.path.exists(ass_path):
+        os.remove(ass_path)
+
+    return os.path.exists(output_path)
+
 
 def generate_clips(video_path, num_clips=3, clip_duration=30):
     duration = get_video_duration(video_path)
