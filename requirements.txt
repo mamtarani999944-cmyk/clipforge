@@ -1,0 +1,6 @@
+flask
+gunicorn
+yt-dlp
+werkzeug
+authlib
+requests

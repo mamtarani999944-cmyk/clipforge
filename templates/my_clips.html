@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Clips &ndash; ClipForge</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f5f5f7;color:#111;min-height:100vh;line-height:1.5}
+.layout{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+.sidebar{background:#fff;border-right:1px solid #e5e5e7;padding:1.5rem 1rem;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+.sidebar-logo{font-size:1rem;font-weight:900;color:#111;display:flex;align-items:center;gap:8px;padding:0 0.5rem;margin-bottom:1.25rem}
+.logo-box{width:26px;height:26px;background:#111;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:900}
+.nav-item{display:flex;align-items:center;gap:9px;padding:0.5rem 0.75rem;border-radius:8px;font-size:0.84rem;font-weight:500;color:#666;cursor:pointer;transition:all 0.15s;text-decoration:none}
+.nav-item.active{background:#f0f0f2;color:#111;font-weight:600}
+.nav-item:hover:not(.active){background:#f7f7f8;color:#333}
+.sidebar-section{font-size:0.65rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:1px;padding:0.85rem 0.75rem 0.35rem;margin-top:0.5rem}
+.main{display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid #e5e5e7;padding:0.85rem 1.75rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:10}
+.topbar-title{font-size:1rem;font-weight:700;color:#111}
+.content{padding:1.75rem;flex:1}
+
+/* Stats bar */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
+.stat-box{background:#fff;border:1px solid #e5e5e7;border-radius:11px;padding:1rem 1.25rem}
+.stat-label{font-size:0.68rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:0.3rem}
+.stat-val{font-size:1.5rem;font-weight:800;color:#111}
+.stat-sub{font-size:0.72rem;color:#aaa;margin-top:0.15rem}
+
+/* Search & filter bar */
+.filter-row{display:flex;gap:8px;margin-bottom:1.25rem;align-items:center}
+.search-field{flex:1;background:#fff;border:1px solid #e0e0e2;border-radius:9px;padding:0.6rem 1rem;font-size:0.85rem;font-family:inherit;color:#111;outline:none;transition:border-color 0.15s}
+.search-field:focus{border-color:#999}
+.search-field::placeholder{color:#bbb}
+.sort-select{background:#fff;border:1px solid #e0e0e2;border-radius:9px;padding:0.6rem 0.85rem;font-size:0.82rem;font-family:inherit;color:#555;outline:none;cursor:pointer}
+.btn-danger{background:#fff;color:#dc2626;border:1px solid #fecaca;padding:0.6rem 1rem;border-radius:9px;font-size:0.82rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.btn-danger:hover{background:#fff5f5}
+
+/* Grid */
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.9rem}
+.section-title{font-size:0.9rem;font-weight:700;color:#111}
+.clip-count-badge{background:#f0f0f2;color:#666;font-size:0.7rem;font-weight:700;padding:0.18rem 0.55rem;border-radius:5px}
+.clips-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:1rem}
+.clip-card{background:#fff;border:1px solid #e5e5e7;border-radius:12px;overflow:hidden;transition:border-color 0.15s}
+.clip-card:hover{border-color:#bbb}
+.clip-thumb{background:#111;height:115px;position:relative;display:flex;align-items:flex-end;justify-content:space-between;padding:0.45rem;overflow:hidden;cursor:pointer}
+.clip-thumb video{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
+.score-badge{background:rgba(0,0,0,0.72);color:#fff;font-size:0.72rem;font-weight:800;padding:0.15rem 0.42rem;border-radius:4px;position:relative;z-index:1}
+.dur-badge{background:rgba(0,0,0,0.72);color:#fff;font-size:0.7rem;font-weight:600;padding:0.15rem 0.42rem;border-radius:4px;position:relative;z-index:1}
+.clip-body{padding:0.7rem}
+.clip-caption-text{font-size:0.76rem;font-weight:600;color:#111;margin-bottom:0.35rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clip-date{font-size:0.68rem;color:#bbb;margin-bottom:0.45rem}
+.virality-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.3rem}
+.virality-label{font-size:0.7rem;color:#aaa;font-weight:500}
+.virality-score{font-size:0.7rem;font-weight:700;color:#111}
+.virality-bar{height:3px;background:#eee;border-radius:999px;overflow:hidden;margin-bottom:0.6rem}
+.virality-fill{height:100%;background:#111;border-radius:999px}
+.clip-actions{display:flex;gap:5px}
+.clip-btn{flex:1;background:#f5f5f7;border:none;border-radius:6px;padding:0.38rem;font-size:0.72rem;font-weight:600;color:#444;cursor:pointer;font-family:inherit;transition:background 0.15s;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center}
+.clip-btn:hover{background:#e8e8ea}
+.clip-btn.primary{background:#111;color:#fff}
+.clip-btn.primary:hover{background:#333}
+.clip-btn.danger{color:#dc2626}
+.clip-btn.danger:hover{background:#fff0f0}
+
+/* Missing file badge */
+.missing-badge{background:#fff3cd;color:#856404;font-size:0.65rem;font-weight:600;padding:0.15rem 0.45rem;border-radius:4px;margin-bottom:0.4rem;display:inline-block}
+
+/* Empty state */
+.empty-state{text-align:center;padding:4rem 2rem;color:#aaa}
+.empty-icon{font-size:3rem;margin-bottom:1rem}
+.empty-title{font-size:1rem;font-weight:700;color:#555;margin-bottom:0.5rem}
+.empty-sub{font-size:0.84rem;margin-bottom:1.5rem}
+.btn-black{background:#111;color:#fff;border:none;padding:0.65rem 1.5rem;border-radius:9px;font-size:0.84rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s;text-decoration:none;display:inline-block}
+.btn-black:hover{background:#333}
+
+/* Loading */
+.loading{text-align:center;padding:3rem;color:#aaa;font-size:0.9rem}
+
+/* Confirm modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:14px;padding:1.75rem;max-width:340px;width:90%;text-align:center}
+.modal-title{font-size:1rem;font-weight:700;color:#111;margin-bottom:0.5rem}
+.modal-sub{font-size:0.84rem;color:#666;margin-bottom:1.25rem}
+.modal-actions{display:flex;gap:8px;justify-content:center}
+.modal-btn{padding:0.6rem 1.5rem;border-radius:8px;font-size:0.84rem;font-weight:600;cursor:pointer;font-family:inherit;border:none}
+.modal-btn.cancel{background:#f0f0f2;color:#555}
+.modal-btn.confirm{background:#dc2626;color:#fff}
+
+footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem}
+.footer-logo{font-size:0.88rem;font-weight:800;color:#111}
+.footer-note{font-size:0.72rem;color:#ccc}
+
+@media(max-width:640px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .stats-row{grid-template-columns:1fr 1fr}
+  .clips-grid{grid-template-columns:1fr 1fr}
+  .filter-row{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-box">&#9889;</div>
+      ClipForge
+    </div>
+    <a class="nav-item" href="/">&#9889; &nbsp;Dashboard</a>
+    <a class="nav-item active" href="/my-clips">&#127897; &nbsp;My Clips</a>
+    <a class="nav-item" href="/analytics">&#128202; &nbsp;Analytics</a>
+    <div class="sidebar-section">Settings</div>
+    <a class="nav-item" href="/preferences">&#9881; &nbsp;Preferences</a>
+    <div style="margin-top:auto;padding-top:1rem;border-top:1px solid #f0f0f2">
+      {% if user %}<div style="display:flex;align-items:center;gap:8px;padding:0.5rem 0.75rem;margin-bottom:4px">
+        {% if user.picture %}<img src="{{ user.picture }}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0" />{% endif %}
+        <span style="font-size:0.78rem;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ user.name }}</span>
+      </div>{% endif %}
+      <a class="nav-item" href="/logout" style="color:#dc2626">&#10548; &nbsp;Logout</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">My Clips</div>
+      <a href="/" class="btn-black" style="font-size:0.82rem;padding:0.5rem 1rem;text-decoration:none">+ New clip</a>
+    </div>
+
+    <div class="content">
+
+      <div class="stats-row" id="statsRow">
+        <div class="stat-box">
+          <div class="stat-label">Total clips</div>
+          <div class="stat-val" id="statTotal">—</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Total duration</div>
+          <div class="stat-val" id="statDuration">—</div>
+          <div class="stat-sub">seconds of content</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Avg virality</div>
+          <div class="stat-val" id="statVirality">—</div>
+          <div class="stat-sub">out of 100</div>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <input class="search-field" id="searchInput" type="text" placeholder="&#128269; Search by caption..." oninput="filterClips()" />
+        <select class="sort-select" id="sortSelect" onchange="filterClips()">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="virality">Highest virality</option>
+          <option value="duration">Longest first</option>
+        </select>
+        <button class="btn-danger" onclick="confirmDeleteAll()">&#128465; Delete all</button>
+      </div>
+
+      <div class="section-head">
+        <div class="section-title">Saved clips</div>
+        <div class="clip-count-badge" id="clipCountBadge">0 clips</div>
+      </div>
+
+      <div id="loadingState" class="loading">Loading clips...</div>
+      <div class="clips-grid" id="clipsGrid" style="display:none"></div>
+      <div id="emptyState" class="empty-state" style="display:none">
+        <div class="empty-icon">&#127897;</div>
+        <div class="empty-title">No clips yet</div>
+        <div class="empty-sub">Generate your first clips from the dashboard</div>
+        <a href="/" class="btn-black">&#9889; Go to Dashboard</a>
+      </div>
+
+    </div>
+
+    <footer>
+      <div class="footer-logo">&#9889; ClipForge</div>
+      <div class="footer-note">Powered by ffmpeg + yt-dlp</div>
+    </footer>
+  </div>
+</div>
+
+<!-- Delete all confirm modal -->
+<div class="modal-bg" id="deleteAllModal">
+  <div class="modal">
+    <div class="modal-title">Delete all clips?</div>
+    <div class="modal-sub">This will permanently delete all saved clips and their files. This cannot be undone.</div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm" onclick="deleteAllClips()">Delete all</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let allClips = [];
+
+  async function loadClips() {
+    try {
+      const res = await fetch('/api/clips');
+      const data = await res.json();
+      allClips = data.clips || [];
+      updateStats();
+      filterClips();
+    } catch(e) {
+      document.getElementById('loadingState').textContent = 'Failed to load clips.';
+    }
+  }
+
+  function updateStats() {
+    const total = allClips.length;
+    const dur = allClips.reduce((s, c) => s + (c.duration || 0), 0);
+    const avg = total ? Math.round(allClips.reduce((s, c) => s + (c.virality_score || 0), 0) / total) : 0;
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statDuration').textContent = Math.round(dur) + 's';
+    document.getElementById('statVirality').textContent = avg || '—';
+  }
+
+  function filterClips() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const sort = document.getElementById('sortSelect').value;
+
+    let filtered = allClips.filter(c => !q || (c.caption || '').toLowerCase().includes(q));
+
+    if (sort === 'oldest') filtered.sort((a, b) => a.id - b.id);
+    else if (sort === 'virality') filtered.sort((a, b) => (b.virality_score || 0) - (a.virality_score || 0));
+    else if (sort === 'duration') filtered.sort((a, b) => (b.duration || 0) - (a.duration || 0));
+    else filtered.sort((a, b) => b.id - a.id);
+
+    renderClips(filtered);
+  }
+
+  function renderClips(clips) {
+    const grid = document.getElementById('clipsGrid');
+    const loading = document.getElementById('loadingState');
+    const empty = document.getElementById('emptyState');
+
+    loading.style.display = 'none';
+    document.getElementById('clipCountBadge').textContent = clips.length + ' clip' + (clips.length !== 1 ? 's' : '');
+
+    if (clips.length === 0) {
+      grid.style.display = 'none';
+      empty.style.display = 'block';
+      return;
+    }
+
+    empty.style.display = 'none';
+    grid.style.display = 'grid';
+    grid.innerHTML = '';
+
+    clips.forEach(clip => {
+      const score = clip.virality_score || 75;
+      const date = clip.created_at ? new Date(clip.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) : '';
+      const card = document.createElement('div');
+      card.className = 'clip-card';
+
+      // Thumbnail: show static image, swap to video on hover
+      let thumbHtml = '';
+      if (clip.exists) {
+        if (clip.thumbnail_url) {
+          thumbHtml = `
+            <img class="clip-thumb-img" src="${clip.thumbnail_url}" alt="thumbnail"
+              style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;transition:opacity 0.2s">
+            <video class="clip-thumb-vid" preload="none" src="${clip.download_url}" muted playsinline
+              style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.2s"></video>`;
+        } else {
+          thumbHtml = `
+            <video preload="metadata" src="${clip.download_url}" muted playsinline
+              style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover"
+              onmouseenter="this.play()" onmouseleave="this.pause();this.currentTime=0"></video>`;
+        }
+      }
+
+      card.innerHTML = `
+        ${!clip.exists ? '<div style="padding:0.4rem 0.7rem 0;"><span class="missing-badge">File deleted</span></div>' : ''}
+        <div class="clip-thumb" onclick="previewClip('${clip.download_url}')">
+          ${thumbHtml}
+          <span class="score-badge">${score}</span>
+          <span class="dur-badge">${clip.duration}s</span>
+        </div>
+        <div class="clip-body">
+          <div class="clip-caption-text" title="${clip.caption}">${clip.caption}</div>
+          <div class="clip-date">${date}</div>
+          <div class="virality-row">
+            <span class="virality-label">Virality</span>
+            <span class="virality-score">${score}/100</span>
+          </div>
+          <div class="virality-bar"><div class="virality-fill" style="width:${score}%"></div></div>
+          <div class="clip-actions">
+            ${clip.exists
+              ? `<a class="clip-btn primary" href="${clip.download_url}" download>&#11015;</a>`
+              : `<span class="clip-btn primary" style="opacity:0.4;cursor:not-allowed">&#11015;</span>`}
+            <button class="clip-btn" onclick="previewClip('${clip.download_url}')" ${!clip.exists ? 'disabled style="opacity:0.4"' : ''}>&#9654;</button>
+            <button class="clip-btn danger" onclick="deleteClip(${clip.id}, this)">&#128465;</button>
+          </div>
+        </div>`;
+      grid.appendChild(card);
+
+      // Thumbnail hover → video swap
+      const thumbEl = card.querySelector('.clip-thumb');
+      const img = card.querySelector('.clip-thumb-img');
+      const vid = card.querySelector('.clip-thumb-vid');
+      if (img && vid && thumbEl) {
+        thumbEl.addEventListener('mouseenter', () => {
+          vid.style.opacity = '1';
+          img.style.opacity = '0';
+          vid.play();
+        });
+        thumbEl.addEventListener('mouseleave', () => {
+          vid.style.opacity = '0';
+          img.style.opacity = '1';
+          vid.pause();
+          vid.currentTime = 0;
+        });
+      }
+    });
+  }
+
+  async function deleteClip(id, btn) {
+    btn.textContent = '...';
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/clips/' + id, { method: 'DELETE' });
+      if (res.ok) {
+        allClips = allClips.filter(c => c.id !== id);
+        updateStats();
+        filterClips();
+      }
+    } catch(e) {
+      btn.textContent = '&#128465;';
+      btn.disabled = false;
+    }
+  }
+
+  function confirmDeleteAll() {
+    if (allClips.length === 0) return;
+    document.getElementById('deleteAllModal').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('deleteAllModal').classList.remove('open');
+  }
+
+  async function deleteAllClips() {
+    closeModal();
+    const ids = [...allClips.map(c => c.id)];
+    for (const id of ids) {
+      await fetch('/api/clips/' + id, { method: 'DELETE' });
+    }
+    allClips = [];
+    updateStats();
+    filterClips();
+  }
+
+  function previewClip(url) {
+    const w = window.open('', '_blank', 'width=400,height=700');
+    w.document.write('<video controls autoplay src="' + url + '" style="width:100%;height:100%;background:#000"></video>');
+  }
+
+  loadClips();
+</script>
+</body>
+</html>

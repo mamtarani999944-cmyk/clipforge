@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Analytics &ndash; ClipForge</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f5f5f7;color:#111;min-height:100vh;line-height:1.5}
+.layout{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+.sidebar{background:#fff;border-right:1px solid #e5e5e7;padding:1.5rem 1rem;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+.sidebar-logo{font-size:1rem;font-weight:900;color:#111;display:flex;align-items:center;gap:8px;padding:0 0.5rem;margin-bottom:1.25rem}
+.logo-box{width:26px;height:26px;background:#111;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:900}
+.nav-item{display:flex;align-items:center;gap:9px;padding:0.5rem 0.75rem;border-radius:8px;font-size:0.84rem;font-weight:500;color:#666;cursor:pointer;transition:all 0.15s;text-decoration:none}
+.nav-item.active{background:#f0f0f2;color:#111;font-weight:600}
+.nav-item:hover:not(.active){background:#f7f7f8;color:#333}
+.sidebar-section{font-size:0.65rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:1px;padding:0.85rem 0.75rem 0.35rem;margin-top:0.5rem}
+.main{display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid #e5e5e7;padding:0.85rem 1.75rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:10}
+.topbar-title{font-size:1rem;font-weight:700;color:#111}
+.content{padding:1.75rem;flex:1}
+
+/* Stats grid */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.75rem}
+.stat-box{background:#fff;border:1px solid #e5e5e7;border-radius:11px;padding:1rem 1.25rem}
+.stat-label{font-size:0.68rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:0.3rem}
+.stat-val{font-size:1.6rem;font-weight:800;color:#111}
+.stat-sub{font-size:0.72rem;color:#aaa;margin-top:0.15rem}
+
+/* Chart card */
+.card{background:#fff;border:1px solid #e5e5e7;border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.card-title{font-size:0.88rem;font-weight:700;color:#111;margin-bottom:1.1rem}
+
+/* Bar chart */
+.bar-chart{display:flex;align-items:flex-end;gap:6px;height:120px;padding-bottom:0}
+.bar-col{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;min-width:0}
+.bar{background:#111;border-radius:4px 4px 0 0;width:100%;transition:background 0.15s;cursor:default;position:relative}
+.bar:hover{background:#333}
+.bar-tooltip{position:absolute;bottom:calc(100% + 4px);left:50%;transform:translateX(-50%);background:#111;color:#fff;font-size:0.65rem;font-weight:700;padding:0.15rem 0.4rem;border-radius:4px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity 0.15s}
+.bar:hover .bar-tooltip{opacity:1}
+.bar-day{font-size:0.62rem;color:#bbb;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center}
+.bar-zero{background:#f0f0f2}
+.no-data-msg{color:#bbb;font-size:0.84rem;text-align:center;padding:2rem 0}
+
+/* Top clips table */
+.top-table{width:100%;border-collapse:collapse}
+.top-table th{font-size:0.68rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;padding:0 0 0.6rem;text-align:left;border-bottom:1px solid #f0f0f2}
+.top-table td{padding:0.65rem 0;border-bottom:1px solid #f5f5f7;font-size:0.82rem;vertical-align:middle}
+.top-table tr:last-child td{border-bottom:none}
+.rank-badge{width:22px;height:22px;background:#f0f0f2;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:800;color:#888;margin-right:6px}
+.rank-badge.gold{background:#fef3c7;color:#92400e}
+.caption-cell{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:#111}
+.score-cell{font-weight:700}
+.mini-bar-wrap{height:4px;background:#eee;border-radius:999px;overflow:hidden;width:80px}
+.mini-bar-fill{height:100%;background:#111;border-radius:999px}
+.dur-cell{color:#888;font-size:0.78rem}
+
+/* Empty */
+.empty-state{text-align:center;padding:4rem 2rem;color:#aaa}
+.empty-icon{font-size:3rem;margin-bottom:1rem}
+.empty-title{font-size:1rem;font-weight:700;color:#555;margin-bottom:0.5rem}
+.empty-sub{font-size:0.84rem;margin-bottom:1.5rem}
+.btn-black{background:#111;color:#fff;border:none;padding:0.65rem 1.5rem;border-radius:9px;font-size:0.84rem;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.15s;text-decoration:none;display:inline-block}
+.btn-black:hover{background:#333}
+
+footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem}
+.footer-logo{font-size:0.88rem;font-weight:800;color:#111}
+.footer-note{font-size:0.72rem;color:#ccc}
+
+@media(max-width:900px){.stats-row{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .stats-row{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-box">&#9889;</div>
+      ClipForge
+    </div>
+    <a class="nav-item" href="/">&#9889; &nbsp;Dashboard</a>
+    <a class="nav-item" href="/my-clips">&#127897; &nbsp;My Clips</a>
+    <a class="nav-item active" href="/analytics">&#128202; &nbsp;Analytics</a>
+    <div class="sidebar-section">Settings</div>
+    <a class="nav-item" href="/preferences">&#9881; &nbsp;Preferences</a>
+    <div style="margin-top:auto;padding-top:1rem;border-top:1px solid #f0f0f2">
+      {% if user %}<div style="display:flex;align-items:center;gap:8px;padding:0.5rem 0.75rem;margin-bottom:4px">
+        {% if user.picture %}<img src="{{ user.picture }}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0" />{% endif %}
+        <span style="font-size:0.78rem;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ user.name }}</span>
+      </div>{% endif %}
+      <a class="nav-item" href="/logout" style="color:#dc2626">&#10548; &nbsp;Logout</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Analytics</div>
+    </div>
+
+    <div class="content" id="mainContent">
+      <div style="text-align:center;padding:3rem;color:#aaa;font-size:0.9rem">Loading analytics...</div>
+    </div>
+
+    <footer>
+      <div class="footer-logo">&#9889; ClipForge</div>
+      <div class="footer-note">Powered by ffmpeg + yt-dlp</div>
+    </footer>
+  </div>
+</div>
+
+<script>
+async function loadAnalytics() {
+  const content = document.getElementById('mainContent');
+  try {
+    const res = await fetch('/api/analytics');
+    const d = await res.json();
+
+    if (d.total_clips === 0) {
+      content.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">&#128202;</div>
+          <div class="empty-title">No data yet</div>
+          <div class="empty-sub">Generate some clips to see your analytics</div>
+          <a href="/" class="btn-black">&#9889; Go to Dashboard</a>
+        </div>`;
+      return;
+    }
+
+    // Build daily chart (last 7 days)
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d2 = new Date();
+      d2.setDate(d2.getDate() - i);
+      const key = d2.toISOString().slice(0, 10);
+      const label = d2.toLocaleDateString('en-IN', { weekday: 'short' });
+      days.push({ key, label, count: d.daily[key] || 0 });
+    }
+    const maxCount = Math.max(...days.map(x => x.count), 1);
+
+    const barCols = days.map(day => `
+      <div class="bar-col">
+        <div class="bar ${day.count === 0 ? 'bar-zero' : ''}"
+          style="height:${Math.max(day.count / maxCount * 100, day.count > 0 ? 8 : 4)}px">
+          ${day.count > 0 ? `<div class="bar-tooltip">${day.count} clip${day.count !== 1 ? 's' : ''}</div>` : ''}
+        </div>
+        <div class="bar-day">${day.label}</div>
+      </div>`).join('');
+
+    // Top clips rows
+    const topRows = (d.top_clips || []).map((clip, i) => {
+      const rankClass = i === 0 ? 'gold' : '';
+      const date = clip.created_at ? new Date(clip.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short'}) : '';
+      return `
+        <tr>
+          <td><span class="rank-badge ${rankClass}">${i + 1}</span></td>
+          <td><div class="caption-cell" title="${clip.caption}">${clip.caption}</div></td>
+          <td class="score-cell">${clip.virality_score || '—'}</td>
+          <td>
+            <div class="mini-bar-wrap">
+              <div class="mini-bar-fill" style="width:${clip.virality_score || 0}%"></div>
+            </div>
+          </td>
+          <td class="dur-cell">${clip.duration || 0}s</td>
+          <td class="dur-cell">${date}</td>
+        </tr>`;
+    }).join('');
+
+    const avgFormatted = Number.isInteger(d.avg_virality) ? d.avg_virality : d.avg_virality.toFixed(1);
+    const totalMin = Math.floor(d.total_duration / 60);
+    const totalSec = Math.round(d.total_duration % 60);
+    const durStr = totalMin > 0 ? `${totalMin}m ${totalSec}s` : `${totalSec}s`;
+
+    content.innerHTML = `
+      <div class="stats-row">
+        <div class="stat-box">
+          <div class="stat-label">Total clips</div>
+          <div class="stat-val">${d.total_clips}</div>
+          <div class="stat-sub">all time</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Total duration</div>
+          <div class="stat-val">${durStr}</div>
+          <div class="stat-sub">of content generated</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">Avg virality</div>
+          <div class="stat-val">${avgFormatted}</div>
+          <div class="stat-sub">out of 100</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-label">This week</div>
+          <div class="stat-val">${days.reduce((s, x) => s + x.count, 0)}</div>
+          <div class="stat-sub">clips generated</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Clips generated — last 7 days</div>
+        <div class="bar-chart">${barCols}</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Top clips by virality score</div>
+        ${d.top_clips && d.top_clips.length > 0 ? `
+        <table class="top-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Caption</th>
+              <th>Score</th>
+              <th></th>
+              <th>Duration</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>${topRows}</tbody>
+        </table>` : '<div class="no-data-msg">No clips yet</div>'}
+      </div>`;
+  } catch(e) {
+    content.innerHTML = '<div style="text-align:center;padding:3rem;color:#dc2626">Failed to load analytics.</div>';
+  }
+}
+
+loadAnalytics();
+</script>
+</body>
+</html>
