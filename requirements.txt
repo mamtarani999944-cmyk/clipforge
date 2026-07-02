@@ -4,3 +4,4 @@ yt-dlp
 werkzeug
 authlib
 requests
+boto3
