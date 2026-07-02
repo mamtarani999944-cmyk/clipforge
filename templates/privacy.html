@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Privacy Policy &ndash; ClipForge</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#f5f5f7;color:#111;min-height:100vh;line-height:1.5}
+.layout{display:grid;grid-template-columns:200px 1fr;min-height:100vh}
+.sidebar{background:#fff;border-right:1px solid #e5e5e7;padding:1.5rem 1rem;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh}
+.sidebar-logo{font-size:1rem;font-weight:900;color:#111;display:flex;align-items:center;gap:8px;padding:0 0.5rem;margin-bottom:1.25rem}
+.logo-box{width:26px;height:26px;background:#111;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:900}
+.nav-item{display:flex;align-items:center;gap:9px;padding:0.5rem 0.75rem;border-radius:8px;font-size:0.84rem;font-weight:500;color:#666;cursor:pointer;transition:all 0.15s;text-decoration:none}
+.nav-item.active{background:#f0f0f2;color:#111;font-weight:600}
+.nav-item:hover:not(.active){background:#f7f7f8;color:#333}
+.sidebar-section{font-size:0.65rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:1px;padding:0.85rem 0.75rem 0.35rem;margin-top:0.5rem}
+.main{display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid #e5e5e7;padding:0.85rem 1.75rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;position:sticky;top:0;z-index:10}
+.topbar-title{font-size:1rem;font-weight:700;color:#111}
+.content{padding:1.75rem;flex:1;max-width:680px}
+
+.info-section{background:#fff;border:1px solid #e5e5e7;border-radius:12px;margin-bottom:1.25rem;overflow:hidden}
+.info-section-title{font-size:0.72rem;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;padding:0.85rem 1.25rem;border-bottom:1px solid #f0f0f2;background:#fafafa}
+.info-body{padding:1.25rem}
+.info-body p{font-size:0.86rem;color:#333;margin-bottom:0.85rem}
+.info-body p:last-child{margin-bottom:0}
+.info-body ul{margin:0 0 0.85rem 1.1rem;padding:0}
+.info-body li{font-size:0.86rem;color:#333;margin-bottom:0.4rem}
+.updated-note{font-size:0.76rem;color:#aaa;margin-bottom:1.25rem}
+
+footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem}
+.footer-logo{font-size:0.88rem;font-weight:800;color:#111}
+.footer-note{font-size:0.72rem;color:#ccc}
+.footer-links{display:flex;gap:1rem}
+.footer-links a{font-size:0.76rem;color:#888;text-decoration:none}
+.footer-links a:hover{color:#111}
+
+@media(max-width:640px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .content{max-width:100%}
+}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-box">&#9889;</div>
+      ClipForge
+    </div>
+    <a class="nav-item" href="/">&#9889; &nbsp;Dashboard</a>
+    <a class="nav-item" href="/my-clips">&#127897; &nbsp;My Clips</a>
+    <a class="nav-item" href="/analytics">&#128202; &nbsp;Analytics</a>
+    <div class="sidebar-section">Settings</div>
+    <a class="nav-item" href="/preferences">&#9881; &nbsp;Preferences</a>
+    <div style="margin-top:auto;padding-top:1rem;border-top:1px solid #f0f0f2">
+      {% if user %}<div style="display:flex;align-items:center;gap:8px;padding:0.5rem 0.75rem;margin-bottom:4px">
+        {% if user.picture %}<img src="{{ user.picture }}" style="width:24px;height:24px;border-radius:50%;flex-shrink:0" />{% endif %}
+        <span style="font-size:0.78rem;font-weight:600;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ user.name }}</span>
+      </div>
+      <a class="nav-item" href="/logout" style="color:#dc2626">&#10548; &nbsp;Logout</a>
+      {% else %}
+      <a class="nav-item" href="/login">&#8594; &nbsp;Login</a>
+      {% endif %}
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title">Privacy Policy</div>
+    </div>
+
+    <div class="content">
+
+      <div class="updated-note">Last updated: July 2, 2026</div>
+
+      <div class="info-section">
+        <div class="info-section-title">What we collect</div>
+        <div class="info-body">
+          <p>When you sign in with Google, we store your name, email address, and profile picture to identify your account.</p>
+          <ul>
+            <li>Videos you upload or link, only for the time needed to generate clips</li>
+            <li>Generated clips, thumbnails, and captions tied to your account</li>
+            <li>Your saved preferences (clip count, duration, caption settings)</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <div class="info-section-title">How we use it</div>
+        <div class="info-body">
+          <p>Your data is used only to operate ClipForge — generating clips, showing your saved library, and remembering your preferences. We do not sell your data or share it with advertisers.</p>
+          <p>Source videos are processed and then deleted from our servers; only the generated clips are retained, tied to your account.</p>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <div class="info-section-title">Third-party services</div>
+        <div class="info-body">
+          <p>ClipForge uses Google for authentication, Cloudflare R2 for storing generated clips, and Anthropic's Claude API to help score and caption clips. Each of these providers processes data under their own privacy terms.</p>
+        </div>
+      </div>
+
+      <div class="info-section">
+        <div class="info-section-title">Your choices</div>
+        <div class="info-body">
+          <p>You can delete any clip, or all of your clips, at any time from the Preferences page. Deleting your account or all associated data can be requested via the Contact page.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <footer>
+      <div class="footer-logo">&#9889; ClipForge</div>
+      <div class="footer-links">
+        <a href="/about">About</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/contact">Contact</a>
+      </div>
+      <div class="footer-note">Powered by ffmpeg + yt-dlp</div>
+    </footer>
+  </div>
+</div>
+
+</body>
+</html>
