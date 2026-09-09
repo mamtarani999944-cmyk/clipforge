@@ -464,15 +464,32 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
             <span class="virality-score">${score}/100</span>
           </div>
           <div class="virality-bar"><div class="virality-fill" style="width:${score}%"></div></div>
-          <div class="clip-actions">
-            <a class="clip-btn primary" href="${clip.download_url}" download>&#11015; Download</a>
-            <button class="clip-btn" onclick="previewClip('${clip.download_url}')">&#9654; Preview</button>
-          </div>
+         <div class="clip-actions">
+  <a class="clip-btn primary" href="${clip.download_url}" download>&#11015; Download</a>
+  <button class="clip-btn" onclick="previewClip('${clip.download_url}')">&#9654; Preview</button>
+  <button class="clip-btn" onclick="shareClip('${clip.download_url}', '${clip.caption}')">&#128279; Share</button>
+</div>
         </div>`;
       grid.appendChild(card);
     });
   }
-
+async function shareClip(url, caption) {
+  const fullUrl = window.location.origin + url;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: caption || 'Check out this clip', url: fullUrl });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(fullUrl);
+    alert('Link copied! Note: this link only works for people who can log into your account, since clips aren\'t public yet.');
+  } catch (err) {
+    prompt('Copy this link:', fullUrl);
+  }
+}
   function previewClip(url) {
     const w = window.open('', '_blank', 'width=400,height=700');
     w.document.write('<video controls autoplay src="' + url + '" style="width:100%;height:100%;background:#000"></video>');
