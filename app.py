@@ -572,14 +572,11 @@ def privacy():
 @app.route('/terms')
 def terms():
     return render_template('terms.html', user=session.get('user'))
-
 @app.route('/contact')
 def contact():
     return render_template('contact.html', user=session.get('user'))
 
-# ── API routes
-────────────────────────────────────────────────────────────────
-
+# API routes
 @app.route('/upload', methods=['POST'])
 @login_required
 def upload():
