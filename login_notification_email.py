@@ -8,7 +8,9 @@ GMAIL_SENDER_EMAIL = os.environ.get('GMAIL_SENDER_EMAIL')
 GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD')
 
 def send_login_notification(to_email, user_name, request=None):
+    print(f"[login_notification_email] CALLED for {to_email}", flush=True)
     if not GMAIL_SENDER_EMAIL or not GMAIL_APP_PASSWORD:
+        print("[login_notification_email] SKIPPED - missing GMAIL_SENDER_EMAIL or GMAIL_APP_PASSWORD env var", flush=True)
         return
     try:
         ip_address = 'Unknown'
@@ -38,9 +40,11 @@ def send_login_notification(to_email, user_name, request=None):
         msg['From'] = GMAIL_SENDER_EMAIL
         msg['To'] = to_email
         msg.attach(MIMEText(html_body, 'html'))
+        print(f"[login_notification_email] Connecting to smtp.gmail.com as {GMAIL_SENDER_EMAIL}", flush=True)
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.starttls()
             server.login(GMAIL_SENDER_EMAIL, GMAIL_APP_PASSWORD)
             server.send_message(msg)
+        print("[login_notification_email] SUCCESS - email sent", flush=True)
     except Exception as e:
-        print(f"[login_notification_email] Failed to send: {e}")
+        print(f"[login_notification_email] FAILED to send: {e}", flush=True)
