@@ -1,16 +1,14 @@
 ﻿import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests
 from datetime import datetime
 
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
 GMAIL_SENDER_EMAIL = os.environ.get('GMAIL_SENDER_EMAIL')
-GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD')
 
 def send_login_notification(to_email, user_name, request=None):
     print(f"[login_notification_email] CALLED for {to_email}", flush=True)
-    if not GMAIL_SENDER_EMAIL or not GMAIL_APP_PASSWORD:
-        print("[login_notification_email] SKIPPED - missing GMAIL_SENDER_EMAIL or GMAIL_APP_PASSWORD env var", flush=True)
+    if not RESEND_API_KEY:
+        print("[login_notification_email] SKIPPED - missing RESEND_API_KEY env var", flush=True)
         return
     try:
         ip_address = 'Unknown'
@@ -35,16 +33,24 @@ def send_login_notification(to_email, user_name, request=None):
           <p style="color:#999;font-size:12px;margin-top:24px">- ClipForge Security</p>
         </div>
         """
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = GMAIL_SENDER_EMAIL
-        msg['To'] = to_email
-        msg.attach(MIMEText(html_body, 'html'))
-        print(f"[login_notification_email] Connecting to smtp.gmail.com as {GMAIL_SENDER_EMAIL}", flush=True)
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login(GMAIL_SENDER_EMAIL, GMAIL_APP_PASSWORD)
-            server.send_message(msg)
-        print("[login_notification_email] SUCCESS - email sent", flush=True)
+        print("[login_notification_email] Sending via Resend API...", flush=True)
+        resp = requests.post(
+            'https://api.resend.com/emails',
+            headers={
+                'Authorization': f'Bearer {RESEND_API_KEY}',
+                'Content-Type': 'application/json',
+            },
+            json={
+                'from': 'ClipForge Security <onboarding@resend.dev>',
+                'to': [to_email],
+                'subject': subject,
+                'html': html_body,
+            },
+            timeout=15,
+        )
+        if resp.status_code in (200, 201, 202):
+            print(f"[login_notification_email] SUCCESS - {resp.status_code} {resp.text}", flush=True)
+        else:
+            print(f"[login_notification_email] FAILED - {resp.status_code} {resp.text}", flush=True)
     except Exception as e:
         print(f"[login_notification_email] FAILED to send: {e}", flush=True)
