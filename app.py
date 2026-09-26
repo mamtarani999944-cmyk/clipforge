@@ -13,10 +13,14 @@ from datetime import datetime
 from flask import Flask, request, jsonify, send_file, render_template, redirect, url_for, session
 from werkzeug.utils import secure_filename
 from authlib.integrations.flask_client import OAuth
+from login_notification_email import send_login_notification
+from razorpay_subscriptions import razorpay_bp, init_subscriptions_db
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
+app.register_blueprint(razorpay_bp)
+init_subscriptions_db()
 
 UPLOAD_FOLDER = 'uploads'
 OUTPUT_FOLDER = 'outputs'
@@ -532,6 +536,10 @@ def auth_google_callback():
     db.close()
 
     session['user'] = {'id': user_id, 'email': email, 'name': name, 'picture': picture}
+    try:
+        send_login_notification(email, name, request)
+    except Exception:
+        pass
     return redirect(url_for('index'))
 
 @app.route('/logout')

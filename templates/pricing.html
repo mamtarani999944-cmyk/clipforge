@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pricing - ClipForge</title>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; background:#f7f7f8; margin:0; padding:40px 20px; }
+  h1 { text-align:center; color:#111; }
+  .plans { display:flex; gap:24px; justify-content:center; flex-wrap:wrap; margin-top:32px; }
+  .plan { background:#fff; border:1px solid #e5e5e5; border-radius:12px; padding:28px; width:260px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05); }
+  .plan h2 { margin:0 0 8px; font-size:20px; }
+  .plan .price { font-size:32px; font-weight:bold; margin:12px 0; }
+  .plan .price span { font-size:14px; font-weight:normal; color:#666; }
+  .plan button { background:#111; color:#fff; border:none; padding:12px 20px; border-radius:8px; cursor:pointer; width:100%; font-size:15px; margin-top:16px; }
+  .plan button:hover { background:#333; }
+  .current-badge { background:#e6f9ee; color:#1a7f4b; font-size:12px; padding:4px 10px; border-radius:999px; display:inline-block; margin-bottom:8px; }
+  .back-link { display:block; text-align:center; margin-top:32px; color:#555; text-decoration:none; }
+</style>
+</head>
+<body>
+<h1>Choose your ClipForge plan</h1>
+<div class="plans">
+  {% for key, plan in plans.items() %}
+  <div class="plan">
+    {% if my_status and my_status.plan_key == key and my_status.status in ['active', 'authenticated', 'created'] %}
+      <div class="current-badge">Current plan</div>
+    {% endif %}
+    <h2>{{ plan.name }}</h2>
+    <div class="price">&#8377;{{ plan.amount }} <span>/ month</span></div>
+    <button onclick="subscribe('{{ key }}', '{{ plan.name }}')">Subscribe</button>
+  </div>
+  {% endfor %}
+</div>
+<a class="back-link" href="/">&larr; Back to dashboard</a>
+
+<script>
+async function subscribe(planKey, planName) {
+  {% if not user %}
+    window.location.href = '/login';
+    return;
+  {% endif %}
+
+  const res = await fetch('/api/create-subscription', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({plan_key: planKey})
+  });
+  const data = await res.json();
+  if (data.error) {
+    alert('Error: ' + data.error);
+    return;
+  }
+
+  const options = {
+    key: data.key_id,
+    subscription_id: data.subscription_id,
+    name: 'ClipForge',
+    description: planName + ' Subscription',
+    handler: async function (response) {
+      const verifyRes = await fetch('/api/verify-payment', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_subscription_id: response.razorpay_subscription_id,
+          razorpay_signature: response.razorpay_signature
+        })
+      });
+      const verifyData = await verifyRes.json();
+      if (verifyData.success) {
+        alert('Subscription activated! Thank you.');
+        window.location.href = '/';
+      } else {
+        alert('Payment verification failed. Please contact support.');
+      }
+    },
+    theme: { color: '#111111' }
+  };
+  const rzp = new Razorpay(options);
+  rzp.open();
+}
+</script>
+</body>
+</html>
