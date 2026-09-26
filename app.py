@@ -590,8 +590,10 @@ def contact():
 def upload():
     num_clips = int(request.form.get('num_clips', 3))
     clip_duration = int(request.form.get('clip_duration', 30))
-    num_clips = min(max(num_clips, 1), 6)
-    clip_duration = min(max(clip_duration, 15), 60)
+    from razorpay_subscriptions import get_user_plan_limits
+    _limits = get_user_plan_limits(current_user_id())
+    num_clips = min(max(num_clips, 1), _limits['max_clips'])
+    clip_duration = min(max(clip_duration, 15), _limits['max_duration'])
     job_id = uuid.uuid4().hex
     user_id = current_user_id()
 

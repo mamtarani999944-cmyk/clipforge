@@ -158,3 +158,24 @@ def razorpay_webhook():
         db.close()
 
     return jsonify({'status': 'ok'})
+
+
+PLAN_LIMITS = {
+    None: {'max_clips': 3, 'max_duration': 30},
+    'basic': {'max_clips': 4, 'max_duration': 45},
+    'pro': {'max_clips': 5, 'max_duration': 60},
+    'premium': {'max_clips': 6, 'max_duration': 60},
+}
+
+
+def get_user_plan_limits(user_id):
+    if not user_id:
+        return PLAN_LIMITS[None]
+    db = get_db_conn()
+    row = db.execute(
+        "SELECT plan_key FROM subscriptions WHERE user_id=? AND status IN ('active','authenticated') ORDER BY id DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+    db.close()
+    plan_key = row['plan_key'] if row else None
+    return PLAN_LIMITS.get(plan_key, PLAN_LIMITS[None])
