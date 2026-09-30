@@ -176,6 +176,18 @@ def get_user_plan_limits(user_id):
         "SELECT plan_key FROM subscriptions WHERE user_id=? AND status IN ('active','authenticated') ORDER BY id DESC LIMIT 1",
         (user_id,)
     ).fetchone()
-    db.close()
     plan_key = row['plan_key'] if row else None
+
+    if not plan_key:
+        try:
+            prow = db.execute(
+                "SELECT plan_key FROM paypal_subscriptions WHERE user_id=? AND status IN ('ACTIVE','APPROVED') ORDER BY id DESC LIMIT 1",
+                (user_id,)
+            ).fetchone()
+            if prow:
+                plan_key = prow['plan_key']
+        except Exception:
+            pass
+
+    db.close()
     return PLAN_LIMITS.get(plan_key, PLAN_LIMITS[None])
