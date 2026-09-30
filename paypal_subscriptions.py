@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 from flask import Blueprint, request, jsonify, session, redirect
 
@@ -126,8 +127,38 @@ def paypal_return():
     return redirect("/pricing?paypal=success")
 
 
+PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")
+
+
+def verify_paypal_webhook(headers, body_bytes, token):
+    if not PAYPAL_WEBHOOK_ID:
+        return True
+    payload = {
+        "transmission_id": headers.get("Paypal-Transmission-Id"),
+        "transmission_time": headers.get("Paypal-Transmission-Time"),
+        "cert_url": headers.get("Paypal-Cert-Url"),
+        "auth_algo": headers.get("Paypal-Auth-Algo"),
+        "transmission_sig": headers.get("Paypal-Transmission-Sig"),
+        "webhook_id": PAYPAL_WEBHOOK_ID,
+        "webhook_event": json.loads(body_bytes.decode("utf-8")),
+    }
+    resp = requests.post(
+        f"{PAYPAL_API_BASE}/v1/notifications/verify-webhook-signature",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+        json=payload,
+        timeout=15,
+    )
+    if resp.status_code != 200:
+        return False
+    return resp.json().get("verification_status") == "SUCCESS"
+
+
 @paypal_bp.route("/api/paypal-webhook", methods=["POST"])
 def paypal_webhook():
+    body_bytes = request.get_data()
+    token = get_paypal_token()
+    if not verify_paypal_webhook(request.headers, body_bytes, token):
+        return jsonify({"error": "Invalid signature"}), 400
     event = request.get_json() or {}
     resource = event.get("resource", {})
     sub_id = resource.get("id")
