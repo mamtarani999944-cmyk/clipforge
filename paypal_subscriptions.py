@@ -35,8 +35,8 @@ def init_paypal_db():
             user_id INTEGER,
             plan_key TEXT,
             paypal_subscription_id TEXT,
-            status TEXT DEFAULT "created",
-            created_at TEXT DEFAULT (datetime("now"))
+            status TEXT DEFAULT 'created',
+            created_at TEXT DEFAULT (datetime('now'))
         )
     """)
     db.commit()
