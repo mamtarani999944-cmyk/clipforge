@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from flask import Blueprint, request, jsonify, session, redirect
+from flask import Blueprint, request, jsonify, session, redirect, render_template
 
 paypal_bp = Blueprint("paypal_bp", __name__)
 
@@ -169,3 +169,40 @@ def paypal_webhook():
         db.commit()
         db.close()
     return jsonify({"status": "ok"})
+
+
+PLAN_LIMITS = {
+    None: {'max_clips': 3, 'max_duration': 30},
+    'basic': {'max_clips': 4, 'max_duration': 45},
+    'pro': {'max_clips': 5, 'max_duration': 60},
+    'premium': {'max_clips': 6, 'max_duration': 60},
+}
+
+
+def get_user_plan_limits(user_id):
+    if not user_id:
+        return PLAN_LIMITS[None]
+    db = get_db_conn()
+    row = db.execute(
+        "SELECT plan_key FROM paypal_subscriptions WHERE user_id=? AND status IN ('ACTIVE','APPROVED') ORDER BY id DESC LIMIT 1",
+        (user_id,)
+    ).fetchone()
+    db.close()
+    plan_key = row['plan_key'] if row else None
+    return PLAN_LIMITS.get(plan_key, PLAN_LIMITS[None])
+
+
+@paypal_bp.route('/pricing')
+def pricing():
+    user = current_user()
+    my_status = None
+    if user:
+        db = get_db_conn()
+        row = db.execute(
+            "SELECT plan_key, status FROM paypal_subscriptions WHERE user_id=? ORDER BY id DESC LIMIT 1",
+            (user['id'],)
+        ).fetchone()
+        db.close()
+        if row:
+            my_status = {'plan_key': row['plan_key'], 'status': row['status']}
+    return render_template('pricing.html', user=user, plans=PAYPAL_PLANS, my_status=my_status)

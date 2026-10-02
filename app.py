@@ -14,14 +14,11 @@ from flask import Flask, request, jsonify, send_file, render_template, redirect,
 from werkzeug.utils import secure_filename
 from authlib.integrations.flask_client import OAuth
 from login_notification_email import send_login_notification
-from razorpay_subscriptions import razorpay_bp, init_subscriptions_db
 from paypal_subscriptions import paypal_bp, init_paypal_db
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
-app.register_blueprint(razorpay_bp)
-init_subscriptions_db()
 app.register_blueprint(paypal_bp)
 init_paypal_db()
 
@@ -623,7 +620,7 @@ def contact():
 def upload():
     num_clips = int(request.form.get('num_clips', 3))
     clip_duration = int(request.form.get('clip_duration', 30))
-    from razorpay_subscriptions import get_user_plan_limits
+    from paypal_subscriptions import get_user_plan_limits
     _limits = get_user_plan_limits(current_user_id())
     num_clips = min(max(num_clips, 1), _limits['max_clips'])
     clip_duration = min(max(clip_duration, 15), _limits['max_duration'])
