@@ -6,3 +6,4 @@ authlib
 requests
 boto3
 faster-whisper
+opencv-python-headless

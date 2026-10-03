@@ -587,6 +587,68 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     with open(ass_path, 'w', encoding='utf-8') as f:
         f.writelines(lines)
 
+def detect_speaker_crop_keyframes(video_path, clip_start, clip_duration, max_samples=15):
+    """Samples frames across a clip's time window from the SOURCE video,
+    finds the largest detected face in each sample, and returns a list of
+    (t_relative_to_clip, frac_x) keyframes describing where to horizontally
+    center the 9:16 crop over time, so the reframe follows the speaker
+    instead of doing a dumb center-crop.
+
+    Returns None if OpenCV/the video can't be read or no face is ever
+    found, so the caller falls back to a plain center crop.
+    """
+    try:
+        import cv2
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            return None
+        cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+        interval = max(clip_duration / max_samples, 1.0)
+        t = 0.0
+        keyframes = []
+        while t <= clip_duration:
+            cap.set(cv2.CAP_PROP_POS_MSEC, (clip_start + t) * 1000)
+            ok, frame = cap.read()
+            if ok and frame is not None:
+                h, w = frame.shape[:2]
+                scale = 320.0 / w if w > 320 else 1.0
+                small = cv2.resize(frame, (int(w * scale), int(h * scale))) if scale != 1.0 else frame
+                gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
+                faces = cascade.detectMultiScale(gray, scaleFactor=1.2, minNeighbors=5, minSize=(30, 30))
+                if len(faces):
+                    fx, fy, fw, fh = max(faces, key=lambda fc: fc[2] * fc[3])
+                    center_x = (fx + fw / 2) / small.shape[1]
+                    keyframes.append((round(t, 2), round(center_x, 4)))
+            t += interval
+        cap.release()
+        return keyframes if len(keyframes) >= 1 else None
+    except Exception as e:
+        print('[reframe] speaker detection failed, falling back to center crop:', e, flush=True)
+        return None
+
+def build_crop_x_expr(keyframes):
+    """Builds an ffmpeg crop-filter x expression (eval=frame) that pans the
+    crop window horizontally between detected speaker positions over time,
+    clamped to stay inside the scaled frame. With no keyframes this reduces
+    to the same plain center crop as before."""
+    if not keyframes:
+        raw = "in_w/2-out_w/2"
+    elif len(keyframes) == 1:
+        raw = f"in_w*{keyframes[0][1]}-out_w/2"
+    else:
+        raw = f"in_w*{keyframes[-1][1]}-out_w/2"
+        for i in range(len(keyframes) - 2, -1, -1):
+            t0, x0 = keyframes[i]
+            t1, x1 = keyframes[i + 1]
+            if t1 <= t0:
+                continue
+            slope = (x1 - x0) / (t1 - t0)
+            seg = f"(in_w*({x0}+({slope})*(t-{t0}))-out_w/2)"
+            raw = f"if(lt(t,{t1}),{seg},{raw})"
+        raw = f"if(lt(t,{keyframes[0][0]}),in_w*{keyframes[0][1]}-out_w/2,{raw})"
+    return f"clip({raw},0,in_w-out_w)"
+
 def extract_clip(video_path, start, duration, output_path, caption="", words=None):
     target_w, target_h = 1080, 1920
     ass_path = None
@@ -598,17 +660,24 @@ def extract_clip(video_path, start, duration, output_path, caption="", words=Non
         ass_path = output_path.replace('.mp4', '.ass')
         generate_ass_captions(caption, duration, ass_path)
 
+    keyframes = detect_speaker_crop_keyframes(video_path, start, duration)
+    crop_x_expr = build_crop_x_expr(keyframes)
+    crop_part = (
+        f"crop=w={target_w}:h={target_h}:"
+        f"x='{crop_x_expr}':y='in_h/2-out_h/2'"
+    )
+
     if ass_path:
         escaped_ass = ass_path.replace('\\', '/').replace(':', '\\:')
         vf = (
             f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,"
-            f"crop={target_w}:{target_h},"
+            f"{crop_part},"
             f"ass='{escaped_ass}'"
         )
     else:
         vf = (
             f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,"
-            f"crop={target_w}:{target_h}"
+            f"{crop_part}"
         )
 
     cmd = [
