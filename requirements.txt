@@ -1,7 +1,8 @@
-﻿flask
+flask
 gunicorn
 yt-dlp @ git+https://github.com/yt-dlp/yt-dlp.git
 werkzeug
 authlib
 requests
 boto3
+faster-whisper

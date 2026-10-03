@@ -87,6 +87,13 @@ body{font-family:'Inter',sans-serif;background:#f5f5f7;color:#111;min-height:100
 
 /* Missing file badge */
 .missing-badge{background:#fff3cd;color:#856404;font-size:0.65rem;font-weight:600;padding:0.15rem 0.45rem;border-radius:4px;margin-bottom:0.4rem;display:inline-block}
+.clip-title-text{font-size:0.82rem;font-weight:700;color:#111;margin-bottom:0.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clip-hashtags{font-size:0.68rem;color:#6366f1;margin-bottom:0.4rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.transcript-panel{margin-top:0.6rem;padding-top:0.6rem;border-top:1px solid #f0f0f2}
+.transcript-edit{width:100%;min-height:70px;font-size:0.72rem;font-family:inherit;color:#333;background:#f5f5f7;border:1px solid #e5e5e7;border-radius:6px;padding:0.4rem;resize:vertical;outline:none}
+.transcript-actions{display:flex;align-items:center;gap:8px;margin-top:0.4rem}
+.transcript-saved{font-size:0.7rem;color:#22c55e;font-weight:600;opacity:0;transition:opacity 0.3s}
+.transcript-saved.show{opacity:1}
 
 /* Empty state */
 .empty-state{text-align:center;padding:4rem 2rem;color:#aaa}
@@ -356,7 +363,9 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
           <span class="dur-badge">${clip.duration}s</span>
         </div>
         <div class="clip-body">
+          ${clip.title ? `<div class="clip-title-text">${clip.title}</div>` : ''}
           <div class="clip-caption-text" title="${clip.caption}">${clip.caption}</div>
+          ${clip.hashtags && clip.hashtags.length ? `<div class="clip-hashtags" id="hashtags-${clip.id}"></div>` : ''}
           <div class="clip-date">${date}</div>
           <div class="virality-row">
             <span class="virality-label">Virality</span>
@@ -368,10 +377,35 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
               ? `<a class="clip-btn primary" href="${clip.download_url}" download>&#11015;</a>`
               : `<span class="clip-btn primary" style="opacity:0.4;cursor:not-allowed">&#11015;</span>`}
             <button class="clip-btn" onclick="previewClip('${clip.download_url}')" ${!clip.exists ? 'disabled style="opacity:0.4"' : ''}>&#9654;</button>
+            <button class="clip-btn" onclick="toggleTranscript(${clip.id})">&#128221;</button>
             <button class="clip-btn danger" onclick="deleteClip(${clip.id}, this)">&#128465;</button>
+          </div>
+          <div class="transcript-panel" id="transcript-${clip.id}" style="display:none">
+            <textarea class="transcript-edit" id="transcript-text-${clip.id}"></textarea>
+            <div class="transcript-actions">
+              <button class="clip-btn primary" onclick="saveTranscript(${clip.id})">Save</button>
+              <span class="transcript-saved" id="transcript-saved-${clip.id}">Saved!</span>
+            </div>
           </div>
         </div>`;
       grid.appendChild(card);
+
+      // Set via DOM (not string interpolation) so special characters in
+      // hashtags/transcript can never break the HTML.
+      if (clip.hashtags && clip.hashtags.length) {
+        const htEl = card.querySelector('#hashtags-' + clip.id);
+        if (htEl) {
+          htEl.textContent = clip.hashtags.join(' ');
+          htEl.title = 'Click to copy';
+          htEl.style.cursor = 'pointer';
+          htEl.onclick = () => {
+            navigator.clipboard.writeText(clip.hashtags.join(' ')).catch(() => {});
+            htEl.title = 'Copied!';
+          };
+        }
+      }
+      const taEl = card.querySelector('#transcript-text-' + clip.id);
+      if (taEl) taEl.value = clip.transcript || '';
 
       // Thumbnail hover → video swap
       const thumbEl = card.querySelector('.clip-thumb');
@@ -406,6 +440,29 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
     } catch(e) {
       btn.textContent = '&#128465;';
       btn.disabled = false;
+    }
+  }
+
+  function toggleTranscript(id) {
+    const panel = document.getElementById('transcript-' + id);
+    if (panel) panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function saveTranscript(id) {
+    const ta = document.getElementById('transcript-text-' + id);
+    const msg = document.getElementById('transcript-saved-' + id);
+    try {
+      await fetch('/api/clips/' + id + '/transcript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: ta.value })
+      });
+      const clip = allClips.find(c => c.id === id);
+      if (clip) clip.transcript = ta.value;
+      msg.classList.add('show');
+      setTimeout(() => msg.classList.remove('show'), 2000);
+    } catch(e) {
+      alert('Failed to save transcript.');
     }
   }
 
