@@ -1,6 +1,6 @@
 flask
 gunicorn
-yt-dlp @ git+https://github.com/yt-dlp/yt-dlp.git
+yt-dlp[default] @ git+https://github.com/yt-dlp/yt-dlp.git
 werkzeug
 authlib
 requests
