@@ -228,10 +228,29 @@ def get_whisper_model():
 def transcribe_video(video_path):
     """Transcribe the full video once. Returns a flat list of word dicts:
     [{'text': 'hello', 'start': 1.2, 'end': 1.4}, ...]. Returns [] on any
-    failure so clip generation never breaks because of transcription."""
+    failure so clip generation never breaks because of transcription.
+
+    Audio is extracted with our own ffmpeg call (mono 16kHz PCM) and handed
+    to Whisper as a numpy array, instead of letting faster-whisper decode
+    the file itself via PyAV -- PyAV can't be reliably built/linked in this
+    environment, so this sidesteps it completely.
+    """
     try:
+        import numpy as np
+        cmd = [
+            'ffmpeg', '-i', video_path,
+            '-f', 's16le', '-acodec', 'pcm_s16le',
+            '-ac', '1', '-ar', '16000',
+            '-'
+        ]
+        result = subprocess.run(cmd, capture_output=True, timeout=300)
+        if not result.stdout:
+            print('[whisper] ffmpeg produced no audio output:', result.stderr[-500:] if result.stderr else '')
+            return []
+        audio = np.frombuffer(result.stdout, np.int16).astype(np.float32) / 32768.0
+
         model = get_whisper_model()
-        segments, _info = model.transcribe(video_path, word_timestamps=True, vad_filter=True)
+        segments, _info = model.transcribe(audio, word_timestamps=True, vad_filter=True)
         words = []
         for seg in segments:
             if not seg.words:
@@ -242,7 +261,6 @@ def transcribe_video(video_path):
     except Exception as e:
         print('Transcription failed:', e)
         return []
-
 def get_clip_words(all_words, clip_start, clip_duration):
     """Slice the full-video word list down to one clip's window, with
     timestamps made relative to the clip's own start."""

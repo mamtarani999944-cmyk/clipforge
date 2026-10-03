@@ -6,4 +6,3 @@ authlib
 requests
 boto3
 faster-whisper
-av<12
