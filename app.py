@@ -43,7 +43,12 @@ if _cookies_b64:
 
 UPLOAD_FOLDER = 'uploads'
 OUTPUT_FOLDER = 'outputs'
-DB_PATH = 'users.db'
+# DATA_DIR should point at a mounted Railway Volume (persistent disk) so the
+# database survives redeploys. Falls back to the app's own directory (the
+# old, non-persistent behavior) if DATA_DIR isn't set yet.
+DATA_DIR = os.environ.get('DATA_DIR', '.')
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_PATH = os.path.join(DATA_DIR, 'users.db')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
