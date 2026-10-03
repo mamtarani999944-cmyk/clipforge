@@ -1,3 +1,3 @@
 [phases.setup]
-aptPkgs = ["ffmpeg", "nodejs"]
-nixPkgs = ["deno"]
+aptPkgs = ["ffmpeg", "nodejs", "curl", "unzip"]
+cmds = ["curl -fsSL https://deno.land/install.sh | sh -s -- -y", "ln -sf /root/.deno/bin/deno /usr/local/bin/deno"]
