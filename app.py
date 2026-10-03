@@ -16,7 +16,10 @@ from authlib.integrations.flask_client import OAuth
 from login_notification_email import send_login_notification
 from paypal_subscriptions import paypal_bp, init_paypal_db
 
+from werkzeug.middleware.proxy_fix import ProxyFix
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+app.config['PREFERRED_URL_SCHEME'] = 'https'
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
 app.register_blueprint(paypal_bp)
