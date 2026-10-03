@@ -230,27 +230,28 @@ def get_whisper_model():
         print('[whisper] model loaded', flush=True)
     return _whisper_model
 
-def transcribe_video(video_path):
-    """Transcribe the full video once. Returns a flat list of word dicts:
-    [{'text': 'hello', 'start': 1.2, 'end': 1.4}, ...]. Returns [] on any
-    failure so clip generation never breaks because of transcription.
+def transcribe_clip_window(video_path, start, duration):
+    """Transcribes just ONE clip's audio window (via a tight ffmpeg -ss/-t
+    seek), instead of the whole source video. This keeps peak memory/CPU
+    bounded by clip_duration no matter how long the original video is --
+    a 2-hour source video costs the same as a 2-minute one here. Word
+    timestamps come back already relative to the clip's own start (no
+    separate full-video-to-clip slicing step needed).
 
-    Audio is extracted with our own ffmpeg call (mono 16kHz PCM) and handed
-    to Whisper as a numpy array, instead of letting faster-whisper decode
-    the file itself via PyAV -- PyAV can't be reliably built/linked in this
-    environment, so this sidesteps it completely.
+    Returns [] on any failure so clip generation never breaks because of
+    transcription.
     """
     try:
         import numpy as np
         cmd = [
-            'ffmpeg', '-i', video_path,
+            'ffmpeg', '-y', '-ss', str(start), '-i', video_path, '-t', str(duration),
             '-f', 's16le', '-acodec', 'pcm_s16le',
             '-ac', '1', '-ar', '16000',
             '-'
         ]
-        result = subprocess.run(cmd, capture_output=True, timeout=300)
+        result = subprocess.run(cmd, capture_output=True, timeout=120)
         if not result.stdout:
-            print('[whisper] ffmpeg produced no audio output:', result.stderr[-500:] if result.stderr else '')
+            print('[whisper] ffmpeg produced no audio output for clip window:', result.stderr[-500:] if result.stderr else '')
             return []
         audio = np.frombuffer(result.stdout, np.int16).astype(np.float32) / 32768.0
 
@@ -264,21 +265,8 @@ def transcribe_video(video_path):
                 words.append({'text': w.word.strip(), 'start': w.start, 'end': w.end})
         return words
     except Exception as e:
-        print('Transcription failed:', e)
+        print('[whisper] clip transcription failed:', e, flush=True)
         return []
-def get_clip_words(all_words, clip_start, clip_duration):
-    """Slice the full-video word list down to one clip's window, with
-    timestamps made relative to the clip's own start."""
-    clip_end = clip_start + clip_duration
-    out = []
-    for w in all_words:
-        if w['start'] >= clip_start and w['start'] < clip_end:
-            out.append({
-                'text': w['text'],
-                'start': max(w['start'] - clip_start, 0),
-                'end': min(w['end'] - clip_start, clip_duration),
-            })
-    return out
 
 def generate_metadata_with_claude(transcript_text, duration, fallback_index):
     """Ask Claude for a title, hook caption, hashtags, and virality score
@@ -734,10 +722,6 @@ def generate_clips(video_path, num_clips=3, clip_duration=30):
     job_id = str(uuid.uuid4())[:8]
     scene_times = detect_scenes(video_path)
 
-    print('[transcribe] starting full-video transcription...', flush=True)
-    all_words = transcribe_video(video_path)
-    print(f'[transcribe] got {len(all_words)} words', flush=True)
-
     if len(scene_times) >= num_clips:
         step = len(scene_times) // num_clips
         selected = [scene_times[i * step] for i in range(num_clips)]
@@ -751,7 +735,9 @@ def generate_clips(video_path, num_clips=3, clip_duration=30):
         actual_start = min(max(start, 0), duration - clip_duration)
         actual_dur = min(clip_duration, duration - actual_start)
 
-        clip_words = get_clip_words(all_words, actual_start, actual_dur)
+        print(f'[transcribe] clip {i+1}: transcribing {actual_dur:.0f}s window starting at {actual_start:.0f}s...', flush=True)
+        clip_words = transcribe_clip_window(video_path, actual_start, actual_dur)
+        print(f'[transcribe] clip {i+1}: got {len(clip_words)} words', flush=True)
         transcript_text = ' '.join(w['text'] for w in clip_words).strip()
 
         meta = generate_metadata_with_claude(transcript_text, actual_dur, i)
