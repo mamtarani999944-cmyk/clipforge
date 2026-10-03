@@ -636,7 +636,9 @@ def upload():
     if source_url:
         video_path, error = download_from_url(source_url, job_id)
         if not video_path:
-            return jsonify({'error': f'Could not download video: {error}'}), 400
+            friendly_error = "This video couldn't be downloaded. It may be restricted, age-limited, or protected by YouTube. Please try a different video."
+            print(f'[download] raw error for {source_url}: {error}', flush=True)
+            return jsonify({'error': friendly_error}), 400
     elif 'video' in request.files and request.files['video'].filename:
         file = request.files['video']
         if not allowed_file(file.filename):
