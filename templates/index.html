@@ -431,13 +431,33 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
     let st = 0;
     const timer = setInterval(() => { st = Math.min(st + 1, 3); setStep(st); }, 10000);
 
+    async function pollJob(jobId) {
+      const maxAttempts = 180; // up to 15 min at 5s intervals
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise(r => setTimeout(r, 5000));
+        let res, data;
+        try {
+          res = await fetch('/api/jobs/' + jobId);
+          data = await res.json();
+        } catch (e) {
+          continue; // transient network hiccup, keep polling
+        }
+        if (data.status === 'done') return data;
+        if (data.status === 'error') throw new Error(data.error || 'Processing failed.');
+        // status === 'processing' -> keep waiting
+      }
+      throw new Error('Still processing after 15 minutes — try a shorter video or fewer clips.');
+    }
+
     try {
       const res = await fetch('/upload', { method: 'POST', body: form });
-      clearInterval(timer);
-      setStep(4);
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || 'Server error');
-      setTimeout(() => { hide('progressSection'); showResults(data.clips); btn.disabled = false; }, 500);
+      setStep(3);
+      const jobResult = await pollJob(data.job_id);
+      clearInterval(timer);
+      setStep(4);
+      setTimeout(() => { hide('progressSection'); showResults(jobResult.clips); btn.disabled = false; }, 500);
     } catch(err) {
       clearInterval(timer);
       hide('progressSection');

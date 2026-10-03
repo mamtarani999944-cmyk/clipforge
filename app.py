@@ -1,4 +1,5 @@
 import os
+import threading
 import uuid
 import json
 import base64
@@ -24,6 +25,12 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
 app.register_blueprint(paypal_bp)
 init_paypal_db()
+
+# In-memory job store for async clip generation. Fine with a single
+# gunicorn worker (see Procfile --workers 1); each job is only read by the
+# user who created it.
+_jobs = {}
+_jobs_lock = threading.Lock()
 
 _cookies_b64 = os.environ.get('YOUTUBE_COOKIES_B64')
 if _cookies_b64:
@@ -832,33 +839,61 @@ def upload():
     else:
         return jsonify({'error': 'Please upload a video file or paste a URL'}), 400
 
-    try:
-        clips = generate_clips(video_path, num_clips=num_clips, clip_duration=clip_duration)
-        os.remove(video_path)
-        if not clips:
-            return jsonify({'error': 'Could not generate clips. Make sure ffmpeg is installed.'}), 500
+    with _jobs_lock:
+        _jobs[job_id] = {'status': 'processing', 'clips': None, 'error': None}
 
-        db = get_db()
-        clip_ids = []
-        for clip in clips:
-            cur = db.execute(
-                'INSERT INTO clips (user_id, filename, caption, duration, start_time, virality_score, virality_reason, thumbnail, title, hashtags, transcript) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (user_id, clip['filename'], clip['caption'], clip['duration'], clip['start'], clip['virality_score'], clip.get('virality_reason'), clip.get('thumbnail'), clip.get('title'), json.dumps(clip.get('hashtags') or []), clip.get('transcript'))
-            )
-            clip_ids.append(cur.lastrowid)
-        db.commit()
-        db.close()
+    def _run_job():
+        try:
+            clips = generate_clips(video_path, num_clips=num_clips, clip_duration=clip_duration)
+            if os.path.exists(video_path):
+                os.remove(video_path)
+            if not clips:
+                with _jobs_lock:
+                    _jobs[job_id] = {'status': 'error', 'clips': None,
+                                      'error': 'Could not generate clips. Make sure ffmpeg is installed.'}
+                return
 
-        # Point download_url at the real DB id now that rows exist.
-        for clip, cid in zip(clips, clip_ids):
-            clip['id'] = cid
-            clip['download_url'] = f'/download/{cid}'
+            db = get_db()
+            clip_ids = []
+            for clip in clips:
+                cur = db.execute(
+                    'INSERT INTO clips (user_id, filename, caption, duration, start_time, virality_score, virality_reason, thumbnail, title, hashtags, transcript) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    (user_id, clip['filename'], clip['caption'], clip['duration'], clip['start'], clip['virality_score'], clip.get('virality_reason'), clip.get('thumbnail'), clip.get('title'), json.dumps(clip.get('hashtags') or []), clip.get('transcript'))
+                )
+                clip_ids.append(cur.lastrowid)
+            db.commit()
+            db.close()
 
-        return jsonify({'clips': clips})
-    except Exception as e:
-        if video_path and os.path.exists(video_path):
-            os.remove(video_path)
-        return jsonify({'error': str(e)}), 500
+            for clip, cid in zip(clips, clip_ids):
+                clip['id'] = cid
+                clip['download_url'] = f'/download/{cid}'
+
+            with _jobs_lock:
+                _jobs[job_id] = {'status': 'done', 'clips': clips, 'error': None}
+        except Exception as e:
+            if video_path and os.path.exists(video_path):
+                os.remove(video_path)
+            with _jobs_lock:
+                _jobs[job_id] = {'status': 'error', 'clips': None, 'error': str(e)}
+
+    threading.Thread(target=_run_job, daemon=True).start()
+    return jsonify({'job_id': job_id}), 202
+
+@app.route('/api/jobs/<job_id>')
+@login_required
+def job_status(job_id):
+    with _jobs_lock:
+        job = _jobs.get(job_id)
+    if not job:
+        return jsonify({'status': 'error', 'error': 'Unknown job'}), 404
+    if job['status'] == 'done':
+        # Free the slot once the client has it; keep a short grace window
+        # in case of a duplicate poll in flight.
+        resp = {'status': 'done', 'clips': job['clips']}
+        return jsonify(resp)
+    if job['status'] == 'error':
+        return jsonify({'status': 'error', 'error': job['error']})
+    return jsonify({'status': 'processing'})
 
 @app.route('/api/clips')
 @login_required
