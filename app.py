@@ -29,8 +29,6 @@ init_paypal_db()
 # In-memory job store for async clip generation. Fine with a single
 # gunicorn worker (see Procfile --workers 1); each job is only read by the
 # user who created it.
-_jobs = {}
-_jobs_lock = threading.Lock()
 
 _cookies_b64 = os.environ.get('YOUTUBE_COOKIES_B64')
 if _cookies_b64:
@@ -461,6 +459,16 @@ def init_db():
     except sqlite3.OperationalError:
         pass
     db.execute('''
+        CREATE TABLE IF NOT EXISTS jobs (
+            id         TEXT PRIMARY KEY,
+            user_id    INTEGER,
+            status     TEXT NOT NULL,
+            clips_json TEXT,
+            error      TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    ''')
+    db.execute('''
         CREATE TABLE IF NOT EXISTS preferences (
             user_id INTEGER,
             key     TEXT,
@@ -839,8 +847,10 @@ def upload():
     else:
         return jsonify({'error': 'Please upload a video file or paste a URL'}), 400
 
-    with _jobs_lock:
-        _jobs[job_id] = {'status': 'processing', 'clips': None, 'error': None}
+    _jdb = get_db()
+    _jdb.execute('INSERT INTO jobs (id, user_id, status) VALUES (?, ?, ?)', (job_id, user_id, 'processing'))
+    _jdb.commit()
+    _jdb.close()
 
     def _run_job():
         try:
@@ -848,9 +858,11 @@ def upload():
             if os.path.exists(video_path):
                 os.remove(video_path)
             if not clips:
-                with _jobs_lock:
-                    _jobs[job_id] = {'status': 'error', 'clips': None,
-                                      'error': 'Could not generate clips. Make sure ffmpeg is installed.'}
+                _jdb = get_db()
+                _jdb.execute('UPDATE jobs SET status=?, error=? WHERE id=?',
+                             ('error', 'Could not generate clips. Make sure ffmpeg is installed.', job_id))
+                _jdb.commit()
+                _jdb.close()
                 return
 
             db = get_db()
@@ -868,13 +880,18 @@ def upload():
                 clip['id'] = cid
                 clip['download_url'] = f'/download/{cid}'
 
-            with _jobs_lock:
-                _jobs[job_id] = {'status': 'done', 'clips': clips, 'error': None}
+            _jdb = get_db()
+            _jdb.execute('UPDATE jobs SET status=?, clips_json=? WHERE id=?',
+                         ('done', json.dumps(clips), job_id))
+            _jdb.commit()
+            _jdb.close()
         except Exception as e:
             if video_path and os.path.exists(video_path):
                 os.remove(video_path)
-            with _jobs_lock:
-                _jobs[job_id] = {'status': 'error', 'clips': None, 'error': str(e)}
+            _jdb = get_db()
+            _jdb.execute('UPDATE jobs SET status=?, error=? WHERE id=?', ('error', str(e), job_id))
+            _jdb.commit()
+            _jdb.close()
 
     threading.Thread(target=_run_job, daemon=True).start()
     return jsonify({'job_id': job_id}), 202
@@ -882,17 +899,16 @@ def upload():
 @app.route('/api/jobs/<job_id>')
 @login_required
 def job_status(job_id):
-    with _jobs_lock:
-        job = _jobs.get(job_id)
-    if not job:
+    db = get_db()
+    row = db.execute('SELECT status, clips_json, error FROM jobs WHERE id = ? AND user_id = ?',
+                      (job_id, current_user_id())).fetchone()
+    db.close()
+    if not row:
         return jsonify({'status': 'error', 'error': 'Unknown job'}), 404
-    if job['status'] == 'done':
-        # Free the slot once the client has it; keep a short grace window
-        # in case of a duplicate poll in flight.
-        resp = {'status': 'done', 'clips': job['clips']}
-        return jsonify(resp)
-    if job['status'] == 'error':
-        return jsonify({'status': 'error', 'error': job['error']})
+    if row['status'] == 'done':
+        return jsonify({'status': 'done', 'clips': json.loads(row['clips_json'] or '[]')})
+    if row['status'] == 'error':
+        return jsonify({'status': 'error', 'error': row['error']})
     return jsonify({'status': 'processing'})
 
 @app.route('/api/clips')
