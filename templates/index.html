@@ -248,6 +248,19 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
         </div>
       </div>
 
+      <div class="setting-box" style="margin-top:10px">
+        <label class="setting-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="brollToggle" style="width:auto" />
+          AI B-Roll &mdash; auto-insert short stock footage over key moments
+        </label>
+      </div>
+      <div class="setting-box" style="margin-top:10px">
+        <label class="setting-label" style="display:flex;align-items:center;gap:8px;cursor:pointer">
+          <input type="checkbox" id="voiceoverToggle" style="width:auto" />
+          AI Voice-Over &mdash; adds a spoken hook narration at the start of each clip
+        </label>
+      </div>
+
       <div class="error-box" id="errorBox">
         &#9888;&#65039; <span id="errorText"></span>
       </div>
@@ -427,6 +440,8 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
     else form.append('video', selectedFile);
     form.append('num_clips', document.getElementById('numClips').value);
     form.append('clip_duration', document.getElementById('clipDur').value);
+    form.append('broll', document.getElementById('brollToggle') && document.getElementById('brollToggle').checked ? 'true' : 'false');
+    form.append('voiceover', document.getElementById('voiceoverToggle') && document.getElementById('voiceoverToggle').checked ? 'true' : 'false');
 
     let st = 0;
     const timer = setInterval(() => { st = Math.min(st + 1, 3); setStep(st); }, 10000);

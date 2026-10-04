@@ -1,5 +1,6 @@
 import os
 import threading
+import asyncio
 import uuid
 import json
 import base64
@@ -122,6 +123,7 @@ def r2_presigned_download_url(r2_key, download_name):
 # ── Claude virality scoring ────────────────────────────────────────────────────
 
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
+PEXELS_API_KEY = os.environ.get('PEXELS_API_KEY')  # https://www.pexels.com/api/ (free)
 CLAUDE_MODEL = 'claude-haiku-4-5-20251001'
 
 FALLBACK_CAPTIONS = [
@@ -642,7 +644,249 @@ def build_crop_x_expr(keyframes):
         raw = f"if(lt(t,{keyframes[0][0]}),in_w*{keyframes[0][1]}-out_w/2,{raw})"
     return f"clip({raw},0,in_w-out_w)"
 
-def extract_clip(video_path, start, duration, output_path, caption="", words=None):
+def get_broll_segments(transcript_text, clip_duration):
+    """Asks Claude to pick at most 2 short moments in the clip where generic
+    stock B-roll footage would enhance the content, each with a short
+    visual search query. Returns a list of {'query','start','end'} dicts,
+    non-overlapping, sorted by start, clamped inside [0, clip_duration],
+    capped to ~35% of the clip's total time.
+
+    Returns [] if B-roll isn't configured (missing API keys), there's no
+    transcript, the clip is too short, or anything about the request fails
+    -- extract_clip() falls back to a plain clip with no B-roll in that case.
+    """
+    if not ANTHROPIC_API_KEY or not PEXELS_API_KEY or not transcript_text.strip() or clip_duration < 8:
+        return []
+    try:
+        prompt = (
+            "You're editing a short vertical video. Here is its spoken transcript "
+            f"({clip_duration:.0f} seconds total):\n\n"
+            f'"{transcript_text}"\n\n'
+            "Pick at most 2 short moments (2-3.5 seconds each) where generic stock "
+            "B-roll footage (not showing the speaker) would visually enhance what's "
+            "being said -- e.g. if they mention money, a city, nature, technology, etc. "
+            "Only pick moments that have an obvious, concrete visual. If nothing fits, "
+            "return an empty array. Respond with ONLY a JSON array (no markdown, no "
+            "preamble) shaped like: "
+            '[{"query": "2-4 word stock footage search term", "start": <seconds into '
+            'the clip>, "end": <seconds into the clip>}]'
+        )
+        resp = requests.post(
+            'https://api.anthropic.com/v1/messages',
+            headers={
+                'x-api-key': ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json',
+            },
+            json={'model': CLAUDE_MODEL, 'max_tokens': 300,
+                  'messages': [{'role': 'user', 'content': prompt}]},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        text = ''.join(
+            b.get('text', '') for b in data.get('content', []) if b.get('type') == 'text'
+        ).strip()
+        text = re.sub(r'^```(json)?|```$', '', text.strip(), flags=re.MULTILINE).strip()
+        parsed = json.loads(text)
+        if not isinstance(parsed, list):
+            return []
+
+        segments = []
+        for item in parsed:
+            try:
+                q = str(item.get('query', '')).strip()
+                s = float(item.get('start'))
+                e = float(item.get('end'))
+            except (TypeError, ValueError, AttributeError):
+                continue
+            s = max(0.0, min(s, clip_duration))
+            e = max(0.0, min(e, clip_duration))
+            if not q or e - s < 1.0 or e - s > 4.0:
+                continue
+            segments.append({'query': q, 'start': round(s, 2), 'end': round(e, 2)})
+
+        segments.sort(key=lambda seg: seg['start'])
+        kept = []
+        last_end = 0.0
+        total = 0.0
+        for seg in segments:
+            if seg['start'] < last_end + 0.5:
+                continue
+            if total + (seg['end'] - seg['start']) > clip_duration * 0.35:
+                continue
+            kept.append(seg)
+            last_end = seg['end']
+            total += seg['end'] - seg['start']
+            if len(kept) >= 2:
+                break
+        return kept
+    except Exception as e:
+        print('[broll] segment selection failed:', e, flush=True)
+        return []
+
+def fetch_broll_clip(query, out_path, min_duration):
+    """Searches Pexels for a short portrait-friendly stock video matching
+    `query` and downloads it to out_path. Returns True only if the
+    download succeeded AND the clip is long enough to cover min_duration,
+    so the caller can safely trim it in the filter graph."""
+    try:
+        resp = requests.get(
+            'https://api.pexels.com/videos/search',
+            headers={'Authorization': PEXELS_API_KEY},
+            params={'query': query, 'orientation': 'portrait', 'per_page': 5},
+            timeout=20,
+        )
+        resp.raise_for_status()
+        videos = resp.json().get('videos', [])
+        if not videos:
+            return False
+
+        best_url = None
+        for v in videos:
+            if (v.get('duration') or 0) < min_duration + 0.5:
+                continue
+            files = sorted(v.get('video_files', []) or [], key=lambda f: f.get('width', 0) or 0)
+            portrait = [f for f in files if (f.get('height') or 0) > (f.get('width') or 0)]
+            pick = portrait or files
+            if pick:
+                best_url = pick[len(pick) // 2].get('link')
+                if best_url:
+                    break
+        if not best_url:
+            return False
+
+        with requests.get(best_url, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            with open(out_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=262144):
+                    f.write(chunk)
+
+        if not (os.path.exists(out_path) and os.path.getsize(out_path) > 1000):
+            return False
+
+        probe = subprocess.run(
+            ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+             '-of', 'default=noprint_wrappers=1:nokey=1', out_path],
+            capture_output=True, text=True, timeout=15,
+        )
+        dl_duration = float(probe.stdout.strip() or 0)
+        if dl_duration < min_duration:
+            return False
+        return True
+    except Exception as e:
+        print('[broll] fetch failed for query', repr(query), ':', e, flush=True)
+        return False
+
+def build_broll_filter_complex(segments, clip_duration, target_w, target_h, main_crop_filter, ass_path=None):
+    """Builds an ffmpeg filter_complex string that: applies main_crop_filter
+    to the main clip (input 0), scales/center-crops each B-roll clip
+    (inputs 1..N) to the same target size, splices the B-roll clips into
+    the main clip's timeline at `segments`' windows via concat, and (if
+    ass_path is given) burns captions on top of the whole result. Returns
+    (filter_complex_str, output_video_label). Audio is left untouched --
+    the caller maps input 0's audio directly, so it stays continuous
+    underneath the B-roll cutaways."""
+    broll_crop = f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,crop={target_w}:{target_h}"
+    lines = [f"[0:v]{main_crop_filter}[mainbase]"]
+
+    n_main_segments = len(segments) + 1
+    split_outs = ''.join(f"[m{i}]" for i in range(n_main_segments))
+    lines.append(f"[mainbase]split={n_main_segments}{split_outs}")
+
+    concat_inputs = []
+    cursor = 0.0
+    for i, seg in enumerate(segments):
+        lines.append(f"[m{i}]trim=start={cursor}:end={seg['start']},setpts=PTS-STARTPTS[v{i}]")
+        concat_inputs.append(f"[v{i}]")
+        broll_idx = i + 1
+        broll_dur = seg['end'] - seg['start']
+        lines.append(f"[{broll_idx}:v]{broll_crop},trim=start=0:end={broll_dur},setpts=PTS-STARTPTS[b{i}]")
+        concat_inputs.append(f"[b{i}]")
+        cursor = seg['end']
+
+    last_i = len(segments)
+    lines.append(f"[m{last_i}]trim=start={cursor}:end={clip_duration},setpts=PTS-STARTPTS[v{last_i}]")
+    concat_inputs.append(f"[v{last_i}]")
+
+    concat_str = ''.join(concat_inputs)
+    lines.append(f"{concat_str}concat=n={len(concat_inputs)}:v=1:a=0[vconcat]")
+
+    out_label = 'vconcat'
+    if ass_path:
+        escaped_ass = ass_path.replace('\\', '/').replace(':', '\\:')
+        lines.append(f"[vconcat]ass='{escaped_ass}'[vout]")
+        out_label = 'vout'
+
+    return ';'.join(lines), out_label
+
+def generate_voiceover_tts(text, out_path, voice="en-US-GuyNeural"):
+    """Synthesizes `text` into speech using Microsoft Edge's free TTS
+    engine (via edge-tts) and saves it as an mp3 at out_path. Returns True
+    on success, False on any failure (missing/empty text, network issue,
+    the service being unreachable, etc.) so callers can skip the
+    voice-over entirely and keep a normal clip.
+    """
+    text = (text or '').strip()
+    if not text:
+        return False
+    try:
+        import edge_tts
+
+        async def _synthesize():
+            communicate = edge_tts.Communicate(text, voice)
+            await communicate.save(out_path)
+
+        asyncio.run(_synthesize())
+        return os.path.exists(out_path) and os.path.getsize(out_path) > 500
+    except Exception as e:
+        print('[voiceover] TTS synthesis failed:', e, flush=True)
+        return False
+
+def apply_voiceover(clip_path, voiceover_path, output_path):
+    """Mixes a narration track (voiceover_path) over the start of an
+    already-rendered clip (clip_path): the clip's own audio is ducked to
+    25% volume only while the narration plays, then returns to full volume.
+    Video is copied through untouched (no re-encode). Writes the result to
+    output_path. Returns True on success, False on any failure -- callers
+    should keep the original clip_path untouched in that case.
+    """
+    try:
+        probe = subprocess.run(
+            ['ffprobe', '-v', 'error', '-show_entries', 'format=duration',
+             '-of', 'default=noprint_wrappers=1:nokey=1', voiceover_path],
+            capture_output=True, text=True, timeout=15,
+        )
+        vo_duration = float(probe.stdout.strip() or 0)
+        if vo_duration <= 0:
+            return False
+
+        filter_complex = (
+            f"[0:a]volume=0.25:enable='between(t,0,{vo_duration})'[a0];"
+            f"[1:a]apad[a1];"
+            f"[a0][a1]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]"
+        )
+        cmd = [
+            'ffmpeg', '-y',
+            '-i', clip_path,
+            '-i', voiceover_path,
+            '-filter_complex', filter_complex,
+            '-map', '0:v', '-map', '[aout]',
+            '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k',
+            '-shortest',
+            output_path
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+        ok = os.path.exists(output_path) and os.path.getsize(output_path) > 1000
+        if not ok:
+            print('[voiceover] mixing failed. RETURNCODE:', result.returncode, flush=True)
+            print('[voiceover] STDERR:', (result.stderr or '')[-2000:], flush=True)
+        return ok
+    except Exception as e:
+        print('[voiceover] mixing failed:', e, flush=True)
+        return False
+
+def extract_clip(video_path, start, duration, output_path, caption="", words=None, transcript_text="", broll_enabled=False):
     target_w, target_h = 1080, 1920
     ass_path = None
 
@@ -659,32 +903,71 @@ def extract_clip(video_path, start, duration, output_path, caption="", words=Non
         f"crop=w={target_w}:h={target_h}:"
         f"x='{crop_x_expr}':y='in_h/2-out_h/2'"
     )
+    main_crop_filter = f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,{crop_part}"
 
-    if ass_path:
-        escaped_ass = ass_path.replace('\\', '/').replace(':', '\\:')
-        vf = (
-            f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,"
-            f"{crop_part},"
-            f"ass='{escaped_ass}'"
-        )
+    def plain_vf():
+        if ass_path:
+            escaped_ass = ass_path.replace('\\', '/').replace(':', '\\:')
+            return f"{main_crop_filter},ass='{escaped_ass}'"
+        return main_crop_filter
+
+    def plain_cmd():
+        return [
+            'ffmpeg', '-y',
+            '-ss', str(start), '-i', video_path,
+            '-t', str(duration),
+            '-vf', plain_vf(),
+            '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-threads', '2',
+            '-c:a', 'aac', '-b:a', '128k',
+            '-movflags', '+faststart',
+            output_path
+        ]
+
+    broll_segments = []
+    broll_files = []
+    if broll_enabled:
+        broll_segments = get_broll_segments(transcript_text, duration)
+        for idx, seg in enumerate(broll_segments):
+            tmp_path = output_path.replace('.mp4', f'_broll{idx}.mp4')
+            if fetch_broll_clip(seg['query'], tmp_path, seg['end'] - seg['start']):
+                broll_files.append(tmp_path)
+            else:
+                broll_files.append(None)
+        if not broll_files or any(f is None for f in broll_files):
+            for f in broll_files:
+                if f and os.path.exists(f):
+                    os.remove(f)
+            broll_segments = []
+            broll_files = []
+
+    use_broll = bool(broll_segments and broll_files)
+
+    if use_broll:
+        escaped_ass = ass_path.replace('\\', '/').replace(':', '\\:') if ass_path else None
+        try:
+            filter_complex, out_label = build_broll_filter_complex(
+                broll_segments, duration, target_w, target_h, main_crop_filter, escaped_ass
+            )
+            cmd = ['ffmpeg', '-y', '-ss', str(start), '-t', str(duration), '-i', video_path]
+            for bf in broll_files:
+                cmd += ['-i', bf]
+            cmd += [
+                '-filter_complex', filter_complex,
+                '-map', f'[{out_label}]', '-map', '0:a',
+                '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-threads', '2',
+                '-c:a', 'aac', '-b:a', '128k',
+                '-movflags', '+faststart',
+                output_path
+            ]
+        except Exception as e:
+            print('[broll] failed to build filter graph, falling back to plain clip:', e, flush=True)
+            use_broll = False
+            cmd = plain_cmd()
     else:
-        vf = (
-            f"scale={target_w}:{target_h}:force_original_aspect_ratio=increase,"
-            f"{crop_part}"
-        )
+        cmd = plain_cmd()
 
-    cmd = [
-        'ffmpeg', '-y',
-        '-ss', str(start), '-i', video_path,
-        '-t', str(duration),
-        '-vf', vf,
-        '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-threads', '2',
-        '-c:a', 'aac', '-b:a', '128k',
-        '-movflags', '+faststart',
-        output_path
-    ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=150 if use_broll else 120)
         returncode = result.returncode
         stderr = result.stderr
     except subprocess.TimeoutExpired as e:
@@ -692,10 +975,31 @@ def extract_clip(video_path, start, duration, output_path, caption="", words=Non
         stderr = (e.stderr or b"").decode(errors="ignore") if isinstance(e.stderr, bytes) else (e.stderr or "")
 
     ok = os.path.exists(output_path) and os.path.getsize(output_path) > 1000
+
+    if not ok and use_broll:
+        print("FFMPEG B-ROLL FAILED, falling back to plain clip. RETURNCODE:", returncode)
+        print("FFMPEG STDERR:", (stderr or '')[-3000:])
+        for f in broll_files:
+            if f and os.path.exists(f):
+                os.remove(f)
+        broll_files = []
+        cmd = plain_cmd()
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            returncode = result.returncode
+            stderr = result.stderr
+        except subprocess.TimeoutExpired as e:
+            returncode = "TIMEOUT"
+            stderr = (e.stderr or b"").decode(errors="ignore") if isinstance(e.stderr, bytes) else (e.stderr or "")
+        ok = os.path.exists(output_path) and os.path.getsize(output_path) > 1000
+
     if not ok:
         print("FFMPEG FAILED. RETURNCODE:", returncode)
-        print("FFMPEG STDERR:", stderr[-3000:])
+        print("FFMPEG STDERR:", (stderr or '')[-3000:])
 
+    for f in broll_files:
+        if f and os.path.exists(f):
+            os.remove(f)
     if ass_path and os.path.exists(ass_path):
         os.remove(ass_path)
 
@@ -721,7 +1025,7 @@ def generate_thumbnail(clip_path, thumb_path):
         print("Thumbnail error:", e)
         return False
 
-def generate_clips(video_path, num_clips=3, clip_duration=30):
+def generate_clips(video_path, num_clips=3, clip_duration=30, broll_enabled=False, voiceover_enabled=False):
     duration = get_video_duration(video_path)
     clips = []
     job_id = str(uuid.uuid4())[:8]
@@ -754,7 +1058,18 @@ def generate_clips(video_path, num_clips=3, clip_duration=30):
 
         out_filename = f"clip_{job_id}_{i+1}.mp4"
         out_path = os.path.join(OUTPUT_FOLDER, out_filename)
-        success = extract_clip(video_path, actual_start, actual_dur, out_path, caption, words=clip_words)
+        success = extract_clip(video_path, actual_start, actual_dur, out_path, caption, words=clip_words, transcript_text=transcript_text, broll_enabled=broll_enabled)
+        if success and voiceover_enabled:
+            vo_path = out_path.replace('.mp4', '_vo.mp3')
+            if generate_voiceover_tts(title, vo_path):
+                mixed_path = out_path.replace('.mp4', '_mixed.mp4')
+                if apply_voiceover(out_path, vo_path, mixed_path):
+                    os.replace(mixed_path, out_path)
+                elif os.path.exists(mixed_path):
+                    os.remove(mixed_path)
+            if os.path.exists(vo_path):
+                os.remove(vo_path)
+
         if success:
             thumb_filename = f"thumb_{job_id}_{i+1}.jpg"
             thumb_path = os.path.join(OUTPUT_FOLDER, thumb_filename)
@@ -881,6 +1196,8 @@ def contact():
 def upload():
     num_clips = int(request.form.get('num_clips', 3))
     clip_duration = int(request.form.get('clip_duration', 30))
+    voiceover_enabled = request.form.get('voiceover', 'false').lower() in ('1', 'true', 'on', 'yes')
+    broll_enabled = request.form.get('broll', 'false').lower() in ('1', 'true', 'on', 'yes')
     from paypal_subscriptions import get_user_plan_limits
     _limits = get_user_plan_limits(current_user_id())
     num_clips = min(max(num_clips, 1), _limits['max_clips'])
@@ -914,7 +1231,7 @@ def upload():
 
     def _run_job():
         try:
-            clips = generate_clips(video_path, num_clips=num_clips, clip_duration=clip_duration)
+            clips = generate_clips(video_path, num_clips=num_clips, clip_duration=clip_duration, broll_enabled=broll_enabled, voiceover_enabled=voiceover_enabled)
             if os.path.exists(video_path):
                 os.remove(video_path)
             if not clips:
