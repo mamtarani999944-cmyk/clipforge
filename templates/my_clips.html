@@ -248,6 +248,29 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
 </div>
 
 <script>
+  async function publishToYoutube(clipId, btn) {
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Publishing...';
+    try {
+      const res = await fetch(`/api/clips/${clipId}/publish-youtube`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        btn.textContent = 'Published! Open \u2192';
+        btn.onclick = () => window.open(data.youtube_url, '_blank');
+        btn.disabled = false;
+      } else {
+        alert(data.error || 'Publish failed. Did you connect YouTube from the Dashboard page first?');
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    } catch (e) {
+      alert('Publish failed: ' + e.message);
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }
+  }
+
   // ── Mobile hamburger menu ──────────────────────────────────────────
   const hamburgerBtn = document.getElementById('hamburgerBtn');
   const sidebarEl = document.getElementById('sidebar');
@@ -379,6 +402,9 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
             <button class="clip-btn" onclick="previewClip('${clip.download_url}')" ${!clip.exists ? 'disabled style="opacity:0.4"' : ''}>&#9654;</button>
             <button class="clip-btn" onclick="toggleTranscript(${clip.id})">&#128221;</button>
             <button class="clip-btn danger" onclick="deleteClip(${clip.id}, this)">&#128465;</button>
+          </div>
+          <div class="clip-actions" style="margin-top:5px">
+            <button class="clip-btn" id="yt-publish-${clip.id}" onclick="publishToYoutube(${clip.id}, this)" style="background:#FF0000;color:#fff" ${!clip.exists ? 'disabled style="opacity:0.4"' : ''}>&#9654; Publish to YouTube</button>
           </div>
           <div class="transcript-panel" id="transcript-${clip.id}" style="display:none">
             <textarea class="transcript-edit" id="transcript-text-${clip.id}"></textarea>
