@@ -1548,11 +1548,14 @@ def publish_to_youtube(clip_id):
             hashtags = []
         hashtag_text = ' '.join(h if h.startswith('#') else f'#{h}' for h in hashtags)
 
+        top_hashtags = ' '.join(hashtag_text.split()[:2])
         title = (clip_row['title'] or clip_row['caption'] or 'New Clip').strip()
-        if len(title) > 90:
-            title = title[:90].rstrip()
+        suffix = (' ' + top_hashtags if top_hashtags else '') + ' #Shorts'
+        max_title_len = 100 - len(suffix)
+        if len(title) > max_title_len:
+            title = title[:max_title_len].rstrip()
         if '#shorts' not in title.lower():
-            title = f"{title} #Shorts"
+            title = f"{title}{suffix}"
 
         description = ((clip_row['caption'] or '') + '\n\n' + hashtag_text).strip()
         tags = [h.lstrip('#') for h in hashtags][:15]
