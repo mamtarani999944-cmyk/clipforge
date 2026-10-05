@@ -11,7 +11,7 @@ import random
 import boto3
 import requests
 from botocore.client import Config
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, send_file, render_template, redirect, url_for, session
 from werkzeug.utils import secure_filename
 from authlib.integrations.flask_client import OAuth
@@ -24,6 +24,10 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.config['PREFERRED_URL_SCHEME'] = 'https'
 app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.register_blueprint(paypal_bp)
 init_paypal_db()
 
@@ -1152,6 +1156,7 @@ def auth_google_callback():
     db.commit()
     db.close()
 
+    session.permanent = True
     session['user'] = {'id': user_id, 'email': email, 'name': name, 'picture': picture}
     try:
         send_login_notification(email, name, request)
