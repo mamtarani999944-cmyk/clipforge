@@ -127,6 +127,7 @@ def r2_presigned_download_url(r2_key, download_name):
 # ── Claude virality scoring ────────────────────────────────────────────────────
 
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
+FREE_DAILY_LIMIT = 3  # free-plan generations per rolling 24h
 YOUTUBE_CLIENT_ID = os.environ.get('YOUTUBE_CLIENT_ID')
 YOUTUBE_CLIENT_SECRET = os.environ.get('YOUTUBE_CLIENT_SECRET')
 YOUTUBE_REDIRECT_URI = os.environ.get('YOUTUBE_REDIRECT_URI', 'https://viralcut.xyz/youtube/callback')
@@ -1220,6 +1221,18 @@ def upload():
     clip_duration = min(max(clip_duration, 15), _limits['max_duration'])
     job_id = uuid.uuid4().hex
     user_id = current_user_id()
+
+    # Free users: limited number of generations per rolling 24 hours.
+    from paypal_subscriptions import PLAN_LIMITS as _PLAN_LIMITS
+    if _limits is _PLAN_LIMITS[None]:
+        _cdb = get_db()
+        _used = _cdb.execute(
+            "SELECT COUNT(*) AS n FROM jobs WHERE user_id = ? AND status != 'error' AND created_at >= datetime('now', '-1 day')",
+            (user_id,)
+        ).fetchone()['n']
+        _cdb.close()
+        if _used >= FREE_DAILY_LIMIT:
+            return jsonify({'error': f'Free limit reached ({FREE_DAILY_LIMIT} generations per day). Upgrade your plan on the Pricing page for more, or try again tomorrow.'}), 429
 
     video_path = None
     source_url = request.form.get('video_url', '').strip()
