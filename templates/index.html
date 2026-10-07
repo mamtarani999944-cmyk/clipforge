@@ -550,6 +550,7 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
           <span class="dur-badge">${clip.duration}s</span>
         </div>
         <div class="clip-body">
+          ${clip.title ? `<div class="dash-title" style="font-weight:700;font-size:0.86rem;margin-bottom:3px;line-height:1.3"></div>` : ''}
           <div class="clip-caption-text">${clip.caption}</div>
           ${clip.hashtags && clip.hashtags.length ? `<div class="dash-hashtags" id="dash-hashtags-${clip.id}" style="font-size:0.7rem;color:#6366f1;margin:2px 0 8px;cursor:pointer;line-height:1.4;word-break:break-word"></div>` : ''}
           <div class="virality-row">
@@ -557,6 +558,8 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
             <span class="virality-score">${score}/100</span>
           </div>
           <div class="virality-bar"><div class="virality-fill" style="width:${score}%"></div></div>
+          ${clip.virality_reason ? `<div class="dash-reason" style="font-size:0.7rem;color:#777;margin:6px 0 8px;line-height:1.4"></div>` : ''}
+          ${clip.transcript ? `<details style="margin:0 0 8px;font-size:0.72rem"><summary style="cursor:pointer;color:#555">&#128221; Transcript</summary><div class="dash-transcript-text" style="margin-top:4px;color:#444;white-space:pre-wrap;max-height:120px;overflow:auto"></div></details>` : ''}
          <div class="clip-actions">
   <a class="clip-btn primary" href="${clip.download_url}" download>&#11015; Download</a>
   <button class="clip-btn" onclick="previewClip('${clip.download_url}')">&#9654; Preview</button>
@@ -567,6 +570,9 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
 </div>
         </div>`;
       grid.appendChild(card);
+      const _t = card.querySelector('.dash-title'); if (_t) _t.textContent = clip.title;
+      const _r = card.querySelector('.dash-reason'); if (_r) _r.textContent = clip.virality_reason;
+      const _x = card.querySelector('.dash-transcript-text'); if (_x) _x.textContent = clip.transcript;
       if (clip.hashtags && clip.hashtags.length) {
         const htEl = card.querySelector('.dash-hashtags');
         if (htEl) {

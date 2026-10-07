@@ -395,6 +395,7 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
             <span class="virality-score">${score}/100</span>
           </div>
           <div class="virality-bar"><div class="virality-fill" style="width:${score}%"></div></div>
+          ${clip.virality_reason ? `<div class="mc-reason" style="font-size:0.68rem;color:#777;margin:5px 0 8px;line-height:1.4"></div>` : ''}
           <div class="clip-actions">
             ${clip.exists
               ? `<a class="clip-btn primary" href="${clip.download_url}" download>&#11015;</a>`
@@ -430,6 +431,7 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
           };
         }
       }
+      const _mr = card.querySelector('.mc-reason'); if (_mr) _mr.textContent = clip.virality_reason;
       const taEl = card.querySelector('#transcript-text-' + clip.id);
       if (taEl) taEl.value = clip.transcript || '';
 
