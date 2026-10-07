@@ -333,6 +333,133 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
 </div>
 
 <script>
+/* REACTIONS_V2 */
+var REACTION_QUICK = ['\u{1F525}', '\u{1F602}', '\u{1F62E}', '❤️', '\u{1F44F}'];
+var REACTION_TABS = [
+  ['Faces', [[0x1F600,0x1F64F],[0x1F910,0x1F92F],[0x1F970,0x1F97A],[0x1F9D0,0x1F9D0]], ['☺️']],
+  ['Hands', [[0x1F440,0x1F450],[0x1F466,0x1F487],[0x1F4AA,0x1F4AA],[0x1F590,0x1F596],[0x1F918,0x1F91F],[0x1F930,0x1F93E],[0x1F9B5,0x1F9B6],[0x1F9D1,0x1F9DF]], ['✌️','☝️','✍️']],
+  ['Hearts', [[0x1F493,0x1F49F],[0x1F4A2,0x1F4A9],[0x1F4AB,0x1F4AF],[0x1F500,0x1F53D],[0x1F7E0,0x1F7EB],[0x2600,0x27BF],[0x2B1B,0x2B55]], ['❤️','❣️','✔️','✖️','♻️','✨']],
+  ['Animals', [[0x1F400,0x1F43E],[0x1F980,0x1F9AE],[0x1F331,0x1F344],[0x1F308,0x1F30C],[0x1F319,0x1F31F],[0x1F32A,0x1F32C]], ['☀️','☁️']],
+  ['Food', [[0x1F345,0x1F37F],[0x1F950,0x1F96F],[0x1F9C0,0x1F9C2]], []],
+  ['Objects', [[0x1F380,0x1F3CA],[0x1F3CF,0x1F3D3],[0x1F3E0,0x1F3F0],[0x1F3A0,0x1F3FA],[0x1F4A1,0x1F4A1],[0x1F4B0,0x1F4FC],[0x1F9E0,0x1F9FF]], []],
+  ['Travel', [[0x1F680,0x1F6C5],[0x1F30D,0x1F310],[0x1F3D4,0x1F3DF],[0x1F6D0,0x1F6D2],[0x1F6E0,0x1F6EC]], ['✈️']]
+];
+var _reactionTabCache = null;
+function _reactionTabs() {
+  if (_reactionTabCache) return _reactionTabCache;
+  var seen = {}, out = [];
+  var isEmoji = function (s) { try { return /\p{Emoji_Presentation}/u.test(s); } catch (e) { return true; } };
+  REACTION_TABS.forEach(function (t) {
+    var list = [];
+    t[1].forEach(function (r) {
+      for (var cp = r[0]; cp <= r[1]; cp++) {
+        if (cp >= 0x1F3FB && cp <= 0x1F3FF) continue;
+        var s = String.fromCodePoint(cp);
+        if (!seen[s] && isEmoji(s)) { seen[s] = 1; list.push(s); }
+      }
+    });
+    (t[2] || []).forEach(function (s) { if (!seen[s]) { seen[s] = 1; list.push(s); } });
+    out.push({name: t[0], list: list});
+  });
+  _reactionTabCache = out;
+  return out;
+}
+function renderReactions(card, clip) {
+  if (!clip || !clip.id) return;
+  var body = card.querySelector('.clip-body');
+  var actions = card.querySelector('.clip-actions');
+  if (!body || !actions) return;
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'margin:0 0 8px';
+  var row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;align-items:center';
+  var panel = document.createElement('div');
+  panel.style.cssText = 'display:none;margin-top:6px;border:1px solid #e5e5e7;border-radius:10px;background:#fff;padding:6px';
+  wrap.appendChild(row);
+  wrap.appendChild(panel);
+  var panelBuilt = false;
+
+  function save(emoji) {
+    return fetch('/api/clips/' + clip.id + '/reaction', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({emoji: emoji})
+    }).then(function (res) {
+      return res.json().then(function (data) {
+        if (res.ok) { clip.reaction = data.emoji; draw(); }
+      });
+    }).catch(function () {});
+  }
+  function chip(emoji) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = emoji;
+    var on = emoji === clip.reaction;
+    b.style.cssText = 'border-radius:8px;padding:4px 8px;font-size:15px;cursor:pointer;line-height:1.2;'
+      + 'background:' + (on ? '#eef2ff' : '#f5f5f7') + ';'
+      + 'border:1.5px solid ' + (on ? '#6366f1' : 'transparent') + ';'
+      + 'transform:' + (on ? 'scale(1.12)' : 'none');
+    b.onclick = function () { save(emoji); };
+    return b;
+  }
+  function buildPanel() {
+    var tabs = _reactionTabs();
+    var bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px';
+    var grid = document.createElement('div');
+    grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:2px;max-height:150px;overflow-y:auto';
+    var tabButtons = [];
+    function show(idx) {
+      grid.textContent = '';
+      tabButtons.forEach(function (tb, i) {
+        tb.style.background = i === idx ? '#111' : '#f5f5f7';
+        tb.style.color = i === idx ? '#fff' : '#444';
+      });
+      tabs[idx].list.forEach(function (emoji) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = emoji;
+        b.style.cssText = 'background:none;border:none;padding:3px;font-size:20px;cursor:pointer;line-height:1.2';
+        b.onclick = function () { panel.style.display = 'none'; save(emoji); };
+        grid.appendChild(b);
+      });
+    }
+    tabs.forEach(function (t, i) {
+      var tb = document.createElement('button');
+      tb.type = 'button';
+      tb.textContent = t.name;
+      tb.style.cssText = 'border:none;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;font-family:inherit';
+      tb.onclick = function () { show(i); };
+      tabButtons.push(tb);
+      bar.appendChild(tb);
+    });
+    panel.appendChild(bar);
+    panel.appendChild(grid);
+    show(0);
+  }
+  function draw() {
+    row.textContent = '';
+    var list = REACTION_QUICK.slice();
+    if (clip.reaction && list.indexOf(clip.reaction) < 0) list.push(clip.reaction);
+    list.forEach(function (emoji) { row.appendChild(chip(emoji)); });
+    var more = document.createElement('button');
+    more.type = 'button';
+    more.textContent = '+';
+    more.title = 'More emojis';
+    more.style.cssText = 'border-radius:8px;padding:4px 10px;font-size:15px;font-weight:700;cursor:pointer;line-height:1.2;background:#f5f5f7;border:1.5px solid transparent;color:#444';
+    more.onclick = function () {
+      if (panel.style.display === 'none') {
+        if (!panelBuilt) { buildPanel(); panelBuilt = true; }
+        panel.style.display = 'block';
+      } else {
+        panel.style.display = 'none';
+      }
+    };
+    row.appendChild(more);
+  }
+  draw();
+  body.insertBefore(wrap, actions);
+}
+
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 
   async function checkYoutubeStatus() {
@@ -572,6 +699,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){retur
 </div>
         </div>`;
       grid.appendChild(card);
+      renderReactions(card, clip);
       const _t = card.querySelector('.dash-title'); if (_t) _t.textContent = clip.title;
       const _r = card.querySelector('.dash-reason'); if (_r) _r.textContent = clip.virality_reason;
       const _x = card.querySelector('.dash-transcript-text'); if (_x) _x.textContent = clip.transcript;

@@ -1358,6 +1358,9 @@ def api_clips():
     user_id = current_user_id()
     db = get_db()
     rows = db.execute('SELECT * FROM clips WHERE user_id = ? ORDER BY created_at DESC', (user_id,)).fetchall()
+    _ensure_reactions_table(db)
+    reactions = {r['clip_id']: r['emoji'] for r in db.execute(
+        'SELECT clip_id, emoji FROM clip_reactions WHERE user_id = ?', (user_id,)).fetchall()}
     db.close()
     clips = []
     for row in rows:
@@ -1374,6 +1377,7 @@ def api_clips():
             'start_time': row['start_time'],
             'virality_score': row['virality_score'],
             'virality_reason': row['virality_reason'],
+            'reaction': reactions.get(row['id']),
             'created_at': row['created_at'],
             'exists': True,  # R2 objects don't disappear on Railway restarts
             'download_url': f'/download/{row["id"]}',
@@ -1800,6 +1804,58 @@ def _security_headers(resp):
     resp.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
     resp.headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
     return resp
+
+# ── Emoji reactions on clips ─────────────────────────────────────────────────
+def _emojiish(ch):
+    o = ord(ch)
+    return ((0x1F000 <= o <= 0x1FAFF) or (0x2190 <= o <= 0x2BFF)
+            or o in (0xA9, 0xAE, 0x203C, 0x2049, 0x2122, 0x2139, 0x3030, 0x303D, 0x3297, 0x3299))
+
+def _valid_reaction(e):
+    """True for a short string made only of emoji characters (any emoji)."""
+    if not isinstance(e, str) or not (1 <= len(e) <= 16):
+        return False
+    glue = (0x200D, 0xFE0F, 0x20E3)
+    if not all(_emojiish(c) or ord(c) in glue for c in e):
+        return False
+    return any(_emojiish(c) for c in e)
+
+def _ensure_reactions_table(db):
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS clip_reactions (
+            clip_id INTEGER,
+            user_id INTEGER,
+            emoji   TEXT NOT NULL,
+            PRIMARY KEY (clip_id, user_id)
+        )
+    """)
+
+@app.route('/api/clips/<int:clip_id>/reaction', methods=['POST'])
+@login_required
+def set_clip_reaction(clip_id):
+    user_id = current_user_id()
+    emoji = (request.get_json(silent=True) or {}).get('emoji')
+    if not _valid_reaction(emoji):
+        return jsonify({'error': 'Unknown emoji'}), 400
+    db = get_db()
+    _ensure_reactions_table(db)
+    clip = db.execute('SELECT id FROM clips WHERE id = ? AND user_id = ?', (clip_id, user_id)).fetchone()
+    if not clip:
+        db.close()
+        return jsonify({'error': 'Clip not found'}), 404
+    current = db.execute('SELECT emoji FROM clip_reactions WHERE clip_id = ? AND user_id = ?', (clip_id, user_id)).fetchone()
+    if current and current['emoji'] == emoji:
+        db.execute('DELETE FROM clip_reactions WHERE clip_id = ? AND user_id = ?', (clip_id, user_id))
+        result = None
+    else:
+        db.execute("""
+            INSERT INTO clip_reactions (clip_id, user_id, emoji) VALUES (?, ?, ?)
+            ON CONFLICT(clip_id, user_id) DO UPDATE SET emoji = excluded.emoji
+        """, (clip_id, user_id, emoji))
+        result = emoji
+    db.commit()
+    db.close()
+    return jsonify({'emoji': result})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
