@@ -551,6 +551,7 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
         </div>
         <div class="clip-body">
           <div class="clip-caption-text">${clip.caption}</div>
+          ${clip.hashtags && clip.hashtags.length ? `<div class="dash-hashtags" id="dash-hashtags-${clip.id}" style="font-size:0.7rem;color:#6366f1;margin:2px 0 8px;cursor:pointer;line-height:1.4;word-break:break-word"></div>` : ''}
           <div class="virality-row">
             <span class="virality-label">Virality score</span>
             <span class="virality-score">${score}/100</span>
@@ -566,6 +567,18 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
 </div>
         </div>`;
       grid.appendChild(card);
+      if (clip.hashtags && clip.hashtags.length) {
+        const htEl = card.querySelector('.dash-hashtags');
+        if (htEl) {
+          const tags = clip.hashtags.map(h => String(h).startsWith('#') ? String(h) : '#' + h).join(' ');
+          htEl.textContent = tags;
+          htEl.title = 'Click to copy';
+          htEl.onclick = () => {
+            navigator.clipboard.writeText(tags).catch(() => {});
+            htEl.title = 'Copied!';
+          };
+        }
+      }
     });
   }
 async function shareClip(url, caption) {
