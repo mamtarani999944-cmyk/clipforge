@@ -159,6 +159,8 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
 </div>
 
 <script>
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
   // ── Mobile hamburger menu ──────────────────────────────────────────
   const hamburgerBtn = document.getElementById('hamburgerBtn');
   const sidebarEl = document.getElementById('sidebar');
@@ -232,7 +234,7 @@ async function loadAnalytics() {
       return `
         <tr>
           <td><span class="rank-badge ${rankClass}">${i + 1}</span></td>
-          <td><div class="caption-cell" title="${clip.caption}">${clip.caption}</div></td>
+          <td><div class="caption-cell" title="${esc(clip.caption)}">${esc(clip.caption)}</div></td>
           <td class="score-cell">${clip.virality_score || '—'}</td>
           <td>
             <div class="mini-bar-wrap">

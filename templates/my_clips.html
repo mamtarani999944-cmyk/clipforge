@@ -248,6 +248,8 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
 </div>
 
 <script>
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
   async function publishToYoutube(clipId, btn) {
     const originalText = btn.textContent;
     btn.disabled = true;
@@ -386,8 +388,8 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
           <span class="dur-badge">${clip.duration}s</span>
         </div>
         <div class="clip-body">
-          ${clip.title ? `<div class="clip-title-text">${clip.title}</div>` : ''}
-          <div class="clip-caption-text" title="${clip.caption}">${clip.caption}</div>
+          ${clip.title ? `<div class="clip-title-text">${esc(clip.title)}</div>` : ''}
+          <div class="clip-caption-text" title="${esc(clip.caption)}">${esc(clip.caption)}</div>
           ${clip.hashtags && clip.hashtags.length ? `<div class="clip-hashtags" id="hashtags-${clip.id}"></div>` : ''}
           <div class="clip-date">${date}</div>
           <div class="virality-row">

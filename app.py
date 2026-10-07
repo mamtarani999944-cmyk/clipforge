@@ -512,7 +512,31 @@ def get_video_duration(path):
     data = json.loads(result.stdout)
     return float(data['format']['duration'])
 
+def _validate_video_url(url):
+    """Returns None if the URL is safe to hand to yt-dlp, else a reason string."""
+    from urllib.parse import urlparse
+    import socket, ipaddress
+    if not isinstance(url, str) or url.startswith('-') or any(c.isspace() for c in url) or len(url) > 2000:
+        return 'invalid url'
+    try:
+        u = urlparse(url)
+    except Exception:
+        return 'invalid url'
+    if u.scheme not in ('http', 'https') or not u.hostname:
+        return 'invalid url'
+    try:
+        for info in socket.getaddrinfo(u.hostname, None):
+            ip = ipaddress.ip_address(info[4][0])
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
+                return 'blocked address'
+    except Exception:
+        return 'could not resolve host'
+    return None
+
 def download_from_url(url, job_id):
+    _bad = _validate_video_url(url)
+    if _bad:
+        return None, _bad
     out_path = os.path.join(UPLOAD_FOLDER, f'{job_id}.mp4')
     cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
 
@@ -522,7 +546,7 @@ def download_from_url(url, job_id):
         '-f', 'best[height<=1080][ext=mp4]/best[ext=mp4]/best',
         '--merge-output-format', 'mp4',
         '-o', out_path, '--no-warnings',
-        url
+        '--', url
     ]
     result = subprocess.run(cmd_primary, capture_output=True, text=True, timeout=300)
 
@@ -538,7 +562,7 @@ def download_from_url(url, job_id):
             '--merge-output-format', 'mp4',
             '-o', out_path, '--no-warnings',
             '--cookies', cookies_path,
-            url
+            '--', url
         ]
         result = subprocess.run(cmd_fallback, capture_output=True, text=True, timeout=300)
 
@@ -1768,6 +1792,14 @@ def admin_costs():
     return render_template_string(
         COST_PAGE, days=days, rows=rows, gens=gens, users=users, total_users=total_users,
         total_usd=f'{total:.2f}', total_inr=f'{total * R["usd_to_inr"]:.0f}', per_gen=per_gen)
+
+@app.after_request
+def _security_headers(resp):
+    resp.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    resp.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+    resp.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    resp.headers.setdefault('Strict-Transport-Security', 'max-age=31536000')
+    return resp
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

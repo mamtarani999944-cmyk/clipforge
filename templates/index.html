@@ -333,6 +333,8 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
 </div>
 
 <script>
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
   async function checkYoutubeStatus() {
     try {
       const res = await fetch('/api/youtube/status');
@@ -551,7 +553,7 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
         </div>
         <div class="clip-body">
           ${clip.title ? `<div class="dash-title" style="font-weight:700;font-size:0.86rem;margin-bottom:3px;line-height:1.3"></div>` : ''}
-          <div class="clip-caption-text">${clip.caption}</div>
+          <div class="clip-caption-text">${esc(clip.caption)}</div>
           ${clip.hashtags && clip.hashtags.length ? `<div class="dash-hashtags" id="dash-hashtags-${clip.id}" style="font-size:0.7rem;color:#6366f1;margin:2px 0 8px;cursor:pointer;line-height:1.4;word-break:break-word"></div>` : ''}
           <div class="virality-row">
             <span class="virality-label">Virality score</span>
@@ -563,7 +565,7 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
          <div class="clip-actions">
   <a class="clip-btn primary" href="${clip.download_url}" download>&#11015; Download</a>
   <button class="clip-btn" onclick="previewClip('${clip.download_url}')">&#9654; Preview</button>
-  <button class="clip-btn" onclick="shareClip('${clip.download_url}', '${clip.caption}')">&#128279; Share</button>
+  <button class="clip-btn" data-caption="${esc(clip.caption)}" onclick="shareClip('${clip.download_url}', this.dataset.caption)">&#128279; Share</button>
 </div>
 <div class="clip-actions" style="margin-top:5px">
   <button class="clip-btn" id="yt-publish-${clip.id}" onclick="publishToYoutube(${clip.id}, this)" style="background:#FF0000;color:#fff">&#9654; Publish to YouTube</button>
