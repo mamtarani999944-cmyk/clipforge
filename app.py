@@ -1881,7 +1881,7 @@ def _ensure_visits_table(db):
     db.commit()
     _visits_ready = True
 
-def _visit_source():
+def _visit_source_raw():
     import re as _re
     from urllib.parse import urlparse
     tag = (request.args.get('ref') or request.args.get('utm_source') or '').strip().lower()
@@ -1898,6 +1898,19 @@ def _visit_source():
     if not host or host.endswith('viralcut.xyz') or host.endswith('railway.app'):
         return 'direct'
     return _re.sub(r'[^a-z0-9._-]', '', host)[:60] or 'direct'
+
+@app.before_request
+def _remember_source():
+    try:
+        if request.method == 'GET' and not request.path.startswith(_SKIP_PREFIXES) and 'src' not in session:
+            s = _visit_source_raw()
+            if s and s != 'direct':
+                session['src'] = s
+    except Exception:
+        pass
+
+def _visit_source():
+    return session.get('src') or _visit_source_raw()
 
 @app.after_request
 def _track_visit(resp):
