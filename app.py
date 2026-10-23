@@ -1257,7 +1257,8 @@ def upload():
 
     # Free users: limited number of generations per rolling 24 hours.
     from paypal_subscriptions import PLAN_LIMITS as _PLAN_LIMITS
-    if _limits is _PLAN_LIMITS[None]:
+    _is_owner_test = ((session.get('user') or {}).get('email') or '').lower() in ADMIN_EMAILS
+    if _limits is _PLAN_LIMITS[None] and not _is_owner_test:
         _cdb = get_db()
         _used = _cdb.execute(
             "SELECT COUNT(*) AS n FROM jobs WHERE user_id = ? AND status != 'error' AND created_at >= datetime('now', '-1 day')",
