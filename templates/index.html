@@ -798,5 +798,35 @@ async function shareClip(url, caption) {
     w.document.write('<video controls autoplay src="' + url + '" style="width:100%;height:100%;background:#000"></video>');
   }
 </script>
+<script>
+/* HEADER_PILLS_V2 */
+(function () {
+  try {
+    var yt = document.getElementById('youtubeConnectBtn');
+    if (!yt || !yt.parentNode) return;
+    var kids = Array.prototype.slice.call(yt.parentNode.children);
+    kids.forEach(function (el) {
+      if (el === yt) return;
+      var t = (el.textContent || '').trim().toLowerCase();
+      if (t === 'tiktok' || t === 'x') {
+        el.style.display = 'none';
+      } else if (t === 'instagram') {
+        el.style.cursor = 'pointer';
+        el.title = 'Connect Instagram to publish Reels';
+        el.onclick = function () { window.location.href = '/instagram/connect'; };
+        fetch('/api/instagram/status').then(function (r) { return r.json(); }).then(function (st) {
+          if (st && st.connected) {
+            var nodes = el.querySelectorAll('span');
+            var label = nodes.length ? nodes[nodes.length - 1] : el;
+            label.textContent = 'Instagram Connected';
+            label.style.color = '#0a0';
+            el.onclick = function () { alert('Instagram is connected' + (st.username ? ' as @' + st.username : '') + '. Use "Publish to Instagram" on a clip.'); };
+          }
+        }).catch(function () {});
+      }
+    });
+  } catch (e) { /* never break the page */ }
+})();
+</script>
 </body>
 </html>
