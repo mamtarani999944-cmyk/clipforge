@@ -248,6 +248,64 @@ footer{background:#fff;border-top:1px solid #e5e5e7;padding:1.25rem 1.75rem;disp
 </div>
 
 <script>
+/* INSTAGRAM_V1 */
+var _igStatusPromise = null;
+function igStatus() {
+  if (!_igStatusPromise) {
+    _igStatusPromise = fetch('/api/instagram/status').then(function (r) { return r.json(); }).catch(function () { return {}; });
+  }
+  return _igStatusPromise;
+}
+async function igClick(clipId, btn) {
+  var st = await igStatus();
+  if (!st.configured) { alert('Instagram publishing is not set up yet.'); return; }
+  if (!st.connected) { window.location.href = '/instagram/connect'; return; }
+  var old = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Sending to Instagram...';
+  try {
+    var r = await fetch('/api/clips/' + clipId + '/publish-instagram', { method: 'POST' });
+    var d = await r.json();
+    if (!r.ok || !d.container_id) { throw new Error(d.error || 'Could not start publishing'); }
+    btn.textContent = 'Instagram is preparing it...';
+    var cid = d.container_id, status = 'IN_PROGRESS', tries = 0;
+    while (status === 'IN_PROGRESS' && tries < 60) {
+      await new Promise(function (res) { setTimeout(res, 3000); });
+      tries++;
+      var sr = await fetch('/api/instagram/container/' + cid);
+      var sd = await sr.json();
+      status = sd.status || 'ERROR';
+      if (status === 'ERROR' || status === 'EXPIRED') { throw new Error(sd.error || 'Instagram could not process this video'); }
+    }
+    if (status !== 'FINISHED') { throw new Error('Instagram is taking too long. Please try again in a few minutes.'); }
+    btn.textContent = 'Publishing...';
+    var pr = await fetch('/api/instagram/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ container_id: cid }) });
+    var pd = await pr.json();
+    if (!pr.ok || !pd.success) { throw new Error(pd.error || 'Publish failed'); }
+    btn.textContent = 'Published! Open \u2192';
+    btn.onclick = function () { window.open(pd.permalink || 'https://www.instagram.com/', '_blank'); };
+    btn.disabled = false;
+  } catch (e) {
+    alert('Instagram: ' + e.message);
+    btn.textContent = old;
+    btn.disabled = false;
+  }
+}
+(function () {
+  igStatus().then(function (st) {
+    if (st && st.configured && !st.connected) {
+      document.querySelectorAll('.ig-publish-btn').forEach(function (b) { if (b.textContent === 'Publish to Instagram') { b.textContent = 'Connect Instagram'; } });
+    }
+  });
+})();
+(function () {
+  try {
+    var p = new URLSearchParams(window.location.search);
+    if (p.get('instagram') === 'connected') { alert('Instagram connected! Now tap "Publish to Instagram" on a clip.'); }
+    else if (p.get('instagram_error')) { alert('Instagram connection failed: ' + p.get('instagram_error')); }
+  } catch (e) { /* ignore */ }
+})();
+
 /* REACTIONS_V2 */
 var REACTION_QUICK = ['\u{1F525}', '\u{1F602}', '\u{1F62E}', '❤️', '\u{1F44F}'];
 var REACTION_TABS = [
@@ -535,6 +593,7 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){retur
           </div>
           <div class="clip-actions" style="margin-top:5px">
             <button class="clip-btn" id="yt-publish-${clip.id}" onclick="publishToYoutube(${clip.id}, this)" style="background:#FF0000;color:#fff" ${!clip.exists ? 'disabled style="opacity:0.4"' : ''}>&#9654; Publish to YouTube</button>
+  <button class="clip-btn ig-publish-btn" onclick="igClick(${clip.id}, this)" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888);color:#fff">Publish to Instagram</button>
           </div>
           <div class="transcript-panel" id="transcript-${clip.id}" style="display:none">
             <textarea class="transcript-edit" id="transcript-text-${clip.id}"></textarea>
