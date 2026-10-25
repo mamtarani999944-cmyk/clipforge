@@ -24,7 +24,40 @@
 </head>
 <body>
 <h1>Choose your ClipForge plan</h1>
-<p class="subtitle">Pay with PayPal (USD)</p>
+<div class="inr-section" style="text-align:center;margin-top:24px">
+  <h2 style="color:#fff;margin:0 0 4px">India: pay with UPI / card (INR)</h2>
+  <p style="color:#999;margin:0">One payment = 30 days. Pay again to add 30 more days.</p>
+</div>
+<div class="plans">
+  <div class="plan"><h3>Basic</h3><div class="price">&#8377;199 <span>/ 30 days</span></div><button style="background:#2563eb" onclick="razorpayPay('basic')">Pay with Razorpay</button></div>
+  <div class="plan"><h3>Pro</h3><div class="price">&#8377;449 <span>/ 30 days</span></div><button style="background:#2563eb" onclick="razorpayPay('pro')">Pay with Razorpay</button></div>
+  <div class="plan"><h3>Premium</h3><div class="price">&#8377;699 <span>/ 30 days</span></div><button style="background:#2563eb" onclick="razorpayPay('premium')">Pay with Razorpay</button></div>
+</div>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+async function razorpayPay(planKey) {
+  try {
+    const resp = await fetch('/api/razorpay-create-order', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({plan_key: planKey})});
+    if (resp.status === 401) { window.location.href = '/login'; return; }
+    const o = await resp.json();
+    if (!o.order_id) { alert('Could not start payment: ' + (o.error || 'unknown error')); return; }
+    const rz = new Razorpay({
+      key: o.key_id, amount: o.amount, currency: 'INR', name: o.name, description: o.description, order_id: o.order_id,
+      prefill: {email: o.email || ''},
+      theme: {color: '#f97316'},
+      handler: async function (r) {
+        const vr = await fetch('/api/razorpay-verify', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(r)});
+        const vd = await vr.json();
+        if (vd.success) { alert('Payment successful! Your plan is active for 30 days.'); window.location.href = '/'; }
+        else { alert(vd.error || 'Payment could not be verified. Please contact us.'); }
+      }
+    });
+    rz.on('payment.failed', function (e) { alert('Payment failed: ' + ((e.error && e.error.description) || 'please try again')); });
+    rz.open();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+</script>
+<p class="subtitle" style="margin-top:36px">International customers: pay with PayPal (USD)</p>
 <div class="plans">
   {% for key, plan in plans.items() %}
   <div class="plan">

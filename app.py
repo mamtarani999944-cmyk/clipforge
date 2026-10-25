@@ -18,6 +18,7 @@ from werkzeug.utils import secure_filename
 from authlib.integrations.flask_client import OAuth
 from login_notification_email import send_login_notification
 from paypal_subscriptions import paypal_bp, init_paypal_db
+from razorpay_payments import razorpay_bp
 
 from werkzeug.middleware.proxy_fix import ProxyFix
 app = Flask(__name__)
@@ -30,6 +31,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.register_blueprint(paypal_bp)
+app.register_blueprint(razorpay_bp)
 init_paypal_db()
 
 # In-memory job store for async clip generation. Fine with a single
@@ -1248,7 +1250,7 @@ def upload():
     clip_duration = int(request.form.get('clip_duration', 30))
     voiceover_enabled = request.form.get('voiceover', 'false').lower() in ('1', 'true', 'on', 'yes')
     broll_enabled = request.form.get('broll', 'false').lower() in ('1', 'true', 'on', 'yes')
-    from paypal_subscriptions import get_user_plan_limits
+    from razorpay_payments import get_user_plan_limits
     _limits = get_user_plan_limits(current_user_id())
     num_clips = min(max(num_clips, 1), _limits['max_clips'])
     clip_duration = min(max(clip_duration, 15), _limits['max_duration'])
