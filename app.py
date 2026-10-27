@@ -561,7 +561,6 @@ def download_from_url(url, job_id):
 
     cmd_primary = [
         'yt-dlp', '--no-playlist',
-        '--extractor-args', 'youtube:player_client=android',
         '-f', 'best[height<=1080][ext=mp4]/best[ext=mp4]/best',
         '--merge-output-format', 'mp4',
         '-o', out_path, '--no-warnings',
@@ -591,6 +590,7 @@ def download_from_url(url, job_id):
     for f in os.listdir(UPLOAD_FOLDER):
         if f.startswith(job_id) and f.endswith('.mp4'):
             return os.path.join(UPLOAD_FOLDER, f), None
+    print('[download] yt-dlp failed:', (result.stderr or '')[-1200:] if result is not None else '', flush=True)
     error = result.stderr.strip().split('\n')[-1] if (result is not None and result.stderr) else 'Download failed'
     return None, error
 

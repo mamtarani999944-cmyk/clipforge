@@ -1,6 +1,6 @@
 flask
 gunicorn
-yt-dlp[default] @ git+https://github.com/yt-dlp/yt-dlp.git
+yt-dlp[default]
 werkzeug
 authlib
 requests
@@ -11,3 +11,4 @@ edge-tts
 google-auth
 google-auth-httplib2
 google-api-python-client
+deno

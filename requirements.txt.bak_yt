@@ -1,0 +1,13 @@
+flask
+gunicorn
+yt-dlp[default] @ git+https://github.com/yt-dlp/yt-dlp.git
+werkzeug
+authlib
+requests
+boto3
+faster-whisper
+opencv-python-headless==4.10.0.84
+edge-tts
+google-auth
+google-auth-httplib2
+google-api-python-client
