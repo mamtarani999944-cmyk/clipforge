@@ -542,6 +542,23 @@ def download_from_url(url, job_id):
     out_path = os.path.join(UPLOAD_FOLDER, f'{job_id}.mp4')
     cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cookies.txt')
 
+    result = None
+    _yt_proxy = os.environ.get('YT_PROXY', '').strip()
+    if _yt_proxy:
+        # residential proxy: keeps YouTube from blocking the Railway server
+        # (720p cap keeps proxy bandwidth low)
+        cmd_proxy = [
+            'yt-dlp', '--no-playlist', '--proxy', _yt_proxy,
+            '-f', 'best[height<=720][ext=mp4]/best[height<=720]/best',
+            '--merge-output-format', 'mp4',
+            '-o', out_path, '--no-warnings', '--socket-timeout', '30',
+            '--', url
+        ]
+        try:
+            result = subprocess.run(cmd_proxy, capture_output=True, text=True, timeout=300)
+        except Exception as _e:
+            print('[download] proxy attempt failed:', _e, flush=True)
+
     cmd_primary = [
         'yt-dlp', '--no-playlist',
         '--extractor-args', 'youtube:player_client=android',
@@ -550,7 +567,8 @@ def download_from_url(url, job_id):
         '-o', out_path, '--no-warnings',
         '--', url
     ]
-    result = subprocess.run(cmd_primary, capture_output=True, text=True, timeout=300)
+    if not os.path.exists(out_path) and not any(f.startswith(job_id) and f.endswith('.mp4') for f in os.listdir(UPLOAD_FOLDER)):
+        result = subprocess.run(cmd_primary, capture_output=True, text=True, timeout=300)
 
     if not os.path.exists(out_path):
         for f in os.listdir(UPLOAD_FOLDER):
@@ -573,7 +591,7 @@ def download_from_url(url, job_id):
     for f in os.listdir(UPLOAD_FOLDER):
         if f.startswith(job_id) and f.endswith('.mp4'):
             return os.path.join(UPLOAD_FOLDER, f), None
-    error = result.stderr.strip().split('\n')[-1] if result.stderr else 'Download failed'
+    error = result.stderr.strip().split('\n')[-1] if (result is not None and result.stderr) else 'Download failed'
     return None, error
 
 def detect_scenes(video_path, threshold=0.35):
