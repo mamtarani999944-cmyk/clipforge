@@ -1,0 +1,166 @@
+﻿
+  app.py:248:    global _whisper_model
+  app.py:249:    if _whisper_model is None:
+  app.py:250:        from faster_whisper import WhisperModel
+  app.py:251:        print('[whisper] loading model...', flush=True)
+  app.py:252:        _whisper_model = WhisperModel('base', 
+device='cpu', compute_type='int8')
+  app.py:253:        print('[whisper] model loaded', flush=True)
+  app.py:254:    return _whisper_model
+  app.py:255:
+> app.py:256:def transcribe_clip_window(video_path, start, duration):
+  app.py:257:    """Transcribes just ONE clip's audio window (via a 
+tight ffmpeg -ss/-t
+  app.py:258:    seek), instead of the whole source video. This keeps 
+peak memory/CPU
+  app.py:259:    bounded by clip_duration no matter how long the 
+original video is --
+  app.py:260:    a 2-hour source video costs the same as a 2-minute 
+one here. Word
+  app.py:261:    timestamps come back already relative to the clip's 
+own start (no
+  app.py:262:    separate full-video-to-clip slicing step needed).
+  app.py:263:
+  app.py:264:    Returns [] on any failure so clip generation never 
+breaks because of
+  app.py:265:    transcription.
+  app.py:266:    """
+  app.py:267:    try:
+  app.py:268:        import numpy as np
+  app.py:269:        cmd = [
+  app.py:270:            'ffmpeg', '-y', '-ss', str(start), '-i', 
+video_path, '-t', str(duration),
+  app.py:271:            '-f', 's16le', '-acodec', 'pcm_s16le',
+  app.py:272:            '-ac', '1', '-ar', '16000',
+  app.py:273:            '-'
+  app.py:274:        ]
+  app.py:275:        result = subprocess.run(cmd, capture_output=True, 
+timeout=120)
+  app.py:276:        if not result.stdout:
+  app.py:277:            print('[whisper] ffmpeg produced no audio 
+output for clip window:', result.stderr[-500:] if result.stderr else 
+'')
+  app.py:278:            return []
+  app.py:279:        audio = np.frombuffer(result.stdout, 
+np.int16).astype(np.float32) / 32768.0
+  app.py:280:
+  app.py:281:        model = get_whisper_model()
+  app.py:909:        )
+  app.py:910:        vo_duration = float(probe.stdout.strip() or 0)
+  app.py:911:        if vo_duration <= 0:
+  app.py:912:            return False
+  app.py:913:
+  app.py:914:        filter_complex = (
+  app.py:915:            
+f"[0:a]volume=0.25:enable='between(t,0,{vo_duration})'[a0];"
+  app.py:916:            f"[1:a]apad[a1];"
+> app.py:917:            f"[a0][a1]amix=inputs=2:duration=first:dropout
+_transition=0:normalize=0[aout]"
+  app.py:918:        )
+  app.py:919:        cmd = [
+  app.py:920:            'ffmpeg', '-y',
+  app.py:921:            '-i', clip_path,
+  app.py:922:            '-i', voiceover_path,
+  app.py:923:            '-filter_complex', filter_complex,
+  app.py:924:            '-map', '0:v', '-map', '[aout]',
+  app.py:925:            '-c:v', 'copy', '-c:a', 'aac', '-b:a', '128k',
+  app.py:926:            '-shortest',
+  app.py:927:            output_path
+  app.py:928:        ]
+  app.py:929:        result = subprocess.run(cmd, capture_output=True, 
+text=True, timeout=60)
+  app.py:930:        ok = os.path.exists(output_path) and 
+os.path.getsize(output_path) > 1000
+  app.py:931:        if not ok:
+  app.py:932:            print('[voiceover] mixing failed. 
+RETURNCODE:', result.returncode, flush=True)
+  app.py:933:            print('[voiceover] STDERR:', (result.stderr 
+or '')[-2000:], flush=True)
+  app.py:934:        return ok
+  app.py:935:    except Exception as e:
+  app.py:936:        print('[voiceover] mixing failed:', e, flush=True)
+  app.py:937:        return False
+  app.py:938:
+> app.py:939:def extract_clip(video_path, start, duration, 
+output_path, caption="", words=None, transcript_text="", 
+broll_enabled=False):
+  app.py:940:    target_w, target_h = 1080, 1920
+  app.py:941:    ass_path = None
+  app.py:942:
+  app.py:943:    if words:
+  app.py:944:        ass_path = output_path.replace('.mp4', '.ass')
+  app.py:945:        generate_ass_captions_from_words(words, duration, 
+ass_path)
+  app.py:946:    elif caption:
+  app.py:947:        ass_path = output_path.replace('.mp4', '.ass')
+  app.py:948:        generate_ass_captions(caption, duration, ass_path)
+  app.py:949:
+  app.py:950:    keyframes = detect_speaker_crop_keyframes(video_path, 
+start, duration)
+  app.py:951:    crop_x_expr = build_crop_x_expr(keyframes)
+  app.py:952:    crop_part = (
+  app.py:953:        f"crop=w={target_w}:h={target_h}:"
+  app.py:954:        f"x='{crop_x_expr}':y='in_h/2-out_h/2'"
+  app.py:955:    )
+  app.py:956:    main_crop_filter = f"scale={target_w}:{target_h}:force
+_original_aspect_ratio=increase,{crop_part}"
+  app.py:957:
+  app.py:958:    def plain_vf():
+  app.py:959:        if ass_path:
+  app.py:960:            escaped_ass = ass_path.replace('\\', 
+'/').replace(':', '\\:')
+  app.py:961:            return 
+f"{main_crop_filter},ass='{escaped_ass}'"
+  app.py:962:        return main_crop_filter
+  app.py:963:
+  app.py:964:    def plain_cmd():
+  app.py:1090:        step = usable / num_clips
+  app.py:1091:        selected = [margin / 2 + i * step for i in 
+range(num_clips)]
+  app.py:1092:
+  app.py:1093:    for i, start in enumerate(selected[:num_clips]):
+  app.py:1094:        actual_start = min(max(start, 0), duration - 
+clip_duration)
+  app.py:1095:        actual_dur = min(clip_duration, duration - 
+actual_start)
+  app.py:1096:
+  app.py:1097:        print(f'[transcribe] clip {i+1}: transcribing 
+{actual_dur:.0f}s window starting at {actual_start:.0f}s...', 
+flush=True)
+> app.py:1098:        clip_words = transcribe_clip_window(video_path, 
+actual_start, actual_dur)
+  app.py:1099:        print(f'[transcribe] clip {i+1}: got 
+{len(clip_words)} words', flush=True)
+  app.py:1100:        transcript_text = ' '.join(w['text'] for w in 
+clip_words).strip()
+  app.py:1101:
+  app.py:1102:        meta = 
+generate_metadata_with_claude(transcript_text, actual_dur, i)
+  app.py:1103:        title = meta['title']
+  app.py:1104:        caption = meta['caption']
+  app.py:1105:        hashtags = meta['hashtags']
+  app.py:1106:        virality_score = meta['virality_score']
+  app.py:1107:        virality_reason = meta['reasoning']
+  app.py:1108:
+  app.py:1109:        out_filename = f"clip_{job_id}_{i+1}.mp4"
+  app.py:1110:        out_path = os.path.join(OUTPUT_FOLDER, 
+out_filename)
+  app.py:1111:        success = extract_clip(video_path, actual_start, 
+actual_dur, out_path, caption, words=clip_words, 
+transcript_text=transcript_text, broll_enabled=broll_enabled)
+  app.py:1112:        if success and voiceover_enabled:
+  app.py:1113:            vo_path = out_path.replace('.mp4', '_vo.mp3')
+  app.py:1114:            if generate_voiceover_tts(title, vo_path):
+  app.py:1115:                mixed_path = out_path.replace('.mp4', 
+'_mixed.mp4')
+  app.py:1116:                if apply_voiceover(out_path, vo_path, 
+mixed_path):
+  app.py:1117:                    os.replace(mixed_path, out_path)
+  app.py:1118:                elif os.path.exists(mixed_path):
+  app.py:1119:                    os.remove(mixed_path)
+  app.py:1120:            if os.path.exists(vo_path):
+  app.py:1121:                os.remove(vo_path)
+  app.py:1122:
+  app.py:1123:        if success:
+
+
